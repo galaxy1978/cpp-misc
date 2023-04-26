@@ -31,7 +31,7 @@ namespace dm
          * @brief 工厂函数，用来创建单例对象
          * @return c
          */
-		template< typename Args... >
+		template< typename ...Args >
         static T * create( Args... args )
         {
             static_assert( is_ok , "必须使用class或者struct定义，并且包含默认的构造函数" );
