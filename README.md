@@ -35,10 +35,10 @@
 
    应用时：
    创建对象
-   `newSingleClass * p = newSingleClass::create();`
+   ```newSingleClass * p = newSingleClass::create();```
    
    获取对象：
-  ` auto * p = newSingleClass::get();`
+  ```auto * p = newSingleClass::get();```
 - 工厂模式：工厂模式采用两种方式实现，一种是采用类继承的方式；一种是采用模板函数的方式
 1. 采用模板函数的方式适用于公有的构造函数的类，例如：
 
