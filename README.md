@@ -3,7 +3,7 @@
 #### 介绍
 我自己常用的基础算法，接口的封装。主要包含了常用的设计模式，容器和一些常用的功能性接口。
 
-- 设计模式目前已经实现里单例模式，装饰模式，工厂模式和桥接模式，位于designM目录。
+- 设计模式目前已经实现里单例模式，装饰模式，工厂模式和桥接模式，位于designM目录。设计模式实现都是采用纯头文件的方式可以直接引用
 
 - 容器目前实现了AVL
 
@@ -74,4 +74,37 @@ a * pa = a::factory( 23 );
 a * pa2 = a::factory( []( Factory::emErrCode err){
             // 错误处理
 } , 23 );
+```
+- 责任链模式
+ 使用示例：
+
+
+```
+class myItfc{
+    virtual int do_something( int ) = 0;
+    定义接口
+ };
+
+ class myItfc1 : public myItfc{
+      接口实现1
+ };
+
+ class myItfc1 : public myItfc{
+      接口实现2
+ };
+
+ class myRsps : public rspsLink< myItfc >{
+        自己的定义和方法
+ }
+
+ myRsps rsps;
+ rsps.push_back( new myItfc1 );
+ rsps.push_back( new myItfc2 );
+ rsps.push_back( ... );
+
+/// 按照责任链传递操作
+ int a = 1;
+ rsps.forward([&]( myRsps::stLinkItem& item ){
+       a = item->do_something( a );
+ });
 ```
