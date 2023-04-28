@@ -34,8 +34,12 @@
 ```
 
    应用时：
-   创建对象
-   ```newSingleClass * p = newSingleClass::create();```
+   创建对象,create支持可变参数方式，因此可以应用于有不同参数的构造函数
+```
+    newSingleClass * p = newSingleClass::create();
+
+    newSingleClass * p = newSingleClass::create( 12 , "abc" );
+```
    
    获取对象：
   ```auto * p = newSingleClass::get();```
