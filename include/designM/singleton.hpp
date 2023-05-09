@@ -40,7 +40,7 @@ namespace dm
             try {
                 __pt_obj.reset( new T((0,args)...) );
             } catch ( std::bad_alloc& e ) {
-                ERROR_MSG( e.what() );
+                std::cerr << e.what() std::endl;
             }
             T * ret = __pt_obj.get();
             return ret;
