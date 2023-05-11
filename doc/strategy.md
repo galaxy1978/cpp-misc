@@ -1,4 +1,4 @@
-# singleton 单例模式
+# strategy 策略模式
 #### 实现原理
 - 1 利用 std::map , std::function 存储策略方法
 - 2 统一调用接口, 使用call根据条件变量调用对应的方法
