@@ -26,6 +26,10 @@ namespace dm
     public:
         singleton( const singleton& ) = delete;
         singleton( singleton&& ) = delete;
+        singleton& operator=( const singleton& ) = delete;
+		singleton& operator=( singleton&& ) = delete;
+
+		virtual ~singleton(){}
         /**
          * @brief 工厂函数，用来创建单例对象
          * @return c
