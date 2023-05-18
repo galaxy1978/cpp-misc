@@ -10,34 +10,59 @@
 #include <functional>
 #include <list>
 /// 使用示例：
-///
-/// class myItfc{
-///    virtual int do_something( int ) = 0;
-///    定义接口
-/// };
+/*
+#include <vector>
+#include <iostream>
 
-/// class myItfc1 : public myItfc{
-///      接口实现1
-/// };
+#include "designM/rspsLink.hpp"
 
-/// class myItfc1 : public myItfc{
-///      接口实现2
-/// };
 
-/// class myRsps : public rspsLink< myItfc >{
-///        自己的定义和方法
-/// }
+using namespace wheels;
+using namespace dm;
 
-/// myRsps rsps;
-/// rsps.push_back( new myItfc1 );
-/// rsps.push_back( new myItfc2 );
-/// rsps.push_back( ... );
-///
-/// 按照责任链传递操作
-/// int a = 1;
-/// rsps.forward([&]( myRsps::stLinkItem& item ){
-///       a = item->do_something( a );
-/// });
+class responseItfc
+{
+public:
+	virtual void response( int r ) = 0;
+};
+
+class rsps1: public responseItfc
+{
+	public:
+	virtual void response( int r )
+	{
+		std::cout << r << std::endl;
+	}
+};
+
+class rsps2: public responseItfc
+{
+	public:
+	virtual void response( int r )
+	{
+		std::cout << r * 2 - 7 << std::endl;
+	}
+};
+
+int main( void )
+{
+	rspsLink< responseItfc >  rsps;
+	rsps1  a;
+	rsps2  b;
+	
+	rsps.push_back( &a );
+	rsps.push_back( &b );
+	
+	rsps.forward( [=]( rspsLink<responseItfc>::stLinkItem& item ){
+		item->response( 10 );
+	} );
+	
+	rsps.forward( []( rspsLink<responseItfc>::stLinkItem& item ){
+		item->response( 10 );
+	} );
+	
+	return 0;
+}*/
 namespace wheels
 {
 namespace dm
