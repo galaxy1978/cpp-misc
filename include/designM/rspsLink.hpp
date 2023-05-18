@@ -6,7 +6,9 @@
  */
 
 #pragma once
-
+#include <assert.h>
+#include <functional>
+#include <list>
 /// 使用示例：
 ///
 /// class myItfc{
@@ -45,12 +47,14 @@ namespace dm
 	{
 	public:
 		using interface_type = itfcType;
+		
 		struct stLinkItem{
-			interface_type    * p_iftc;
-
+			mutable interface_type    * p_itfc;
+			
 			interface_type * operator->(){ return p_itfc; }
 			stLinkItem():p_itfc( nullptr ){}
 			stLinkItem( interface_type * itfc ):p_itfc( itfc ){}
+			stLinkItem( const stLinkItem& b ):p_itfc( b.p_itfc ){}
 			stLinkItem( stLinkItem&& b ):p_itfc( b.p_itfc ){}
 
 			stLinkItem& operator=( stLinkItem&& b ){
@@ -59,12 +63,14 @@ namespace dm
 			}
 		};
 
-		using link_t = std::list< stLinkItem >;
+		using link_t =  std::list< stLinkItem >;
+		using iterator = typename std::list< stLinkItem >::iterator; 
 	protected:
 		link_t             __m_link;
-		link_t::iterator   __m_curr_it;
+		mutable iterator   __m_curr_it;
+		bool               __m_started;
 	public:
-		rspsLink(){}
+		rspsLink():__m_started( false ){}
 		virtual ~rspsLink(){}
 
 		/**
@@ -80,13 +86,18 @@ namespace dm
 		 */
 		bool forward( std::function< void ( stLinkItem& curr ) > cb ){
 			bool ret = true;
+			
 			if( __m_link.size() == 0 ) return false;
 			if( __m_curr_it == __m_link.end() ){
 				__m_curr_it = __m_link.begin();
 				return false;
 			}
 			if( !cb ) return false;
-
+			if( __m_started == false ){
+				__m_started = true;
+				__m_curr_it = __m_link.begin();
+			}
+			
 			cb( *__m_curr_it );
 			__m_curr_it ++;
 			
@@ -104,17 +115,23 @@ namespace dm
 		 *  });
 		 */
 		bool backward( std::function< void ( stLinkItem &curr ) > cb ){
-				bool ret = true;
+			bool ret = true;
 			if( __m_link.size() == 0 ) return false;
-			if( __m_curr_it == __m_link.end() ){
-				__m_curr_it = __m_link.end();
-				__m_curr_it --;
+			if( __m_curr_it == __m_link.rend() ){
+				__m_curr_it = __m_link.rend();
+				__m_curr_it ++;
 				return false;
 			}
+			
+			if( __m_started == false ){
+				__m_started = true;
+				__m_curr_it = __m_link.rbegin();
+			}
+			
 			if( !cb ) return false;
 
 			cb( *__m_curr_it );
-			__m_curr_it --;
+			__m_curr_it ++;
 		
 		}
 		/**
@@ -161,7 +178,7 @@ namespace dm
 
 			__m_curr_it = __m_link.begin();
 
-			return ret;
+			return true;
 		}
 
 		bool setFromEnd(){
@@ -169,7 +186,7 @@ namespace dm
 
 			__m_curr_it = __m_link.end();
 
-			return ret;
+			return true;
 		}
 
 		iterator begin(){ return __m_link.begin(); }
