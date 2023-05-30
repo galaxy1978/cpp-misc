@@ -10,6 +10,11 @@
 #include <memory>
 #include <list>
 #include <iterator>
+#include <iostream>
+
+#if !defined( THREAD_SAFE )
+#    define THREAD_SAFE 1
+#endif
 
 #if THREAD_SAFE
 #    include <mutex>
@@ -23,11 +28,12 @@ namespace wheels
 		using color = bool;
 		const static bool      RED = true;
 		const static bool      BLACK   = false;
+		using value_type = dataType;
 		// 树节点定义
 		struct stNode {
 			keyType               m_key;
 			dataType              m_val;
-			std::atomic< color >  m_color;
+			color                 m_color;
 			stNode              * p_left;
 			stNode              * p_right;
 
@@ -50,10 +56,11 @@ namespace wheels
 			}
 		};
 
+		using node_t = stNode;
 		// 迭代器定义
 		class __stIterator : public std::iterator< std::forward_iterator_tag , stNode >{
 		private:
-			stNode                  * __p_node;
+			stNode                * __p_node;
 			std::list< node_t * >   __m_stack;   // 迭代时候需要将数据进行压栈
 		public:
 			__stIterator( node_t * node ):__p_node( node ){}
@@ -92,20 +99,20 @@ namespace wheels
 			
 				return *this;
 			}
-		
-			__avlIterator operator++(node_t){
-				__avlIterator tmp( *this );
+			
+			__stIterator operator++(int){
+				__stIterator tmp( *this );
 				operator ++();
 				return tmp;
 			}
 		
-			bool operator==( const __avlIterator& b ) const{ return __p_node == b.__p_node; }
-			bool operator!=( const __avlIterator& b ) const{ return __p_node != b.__p_node; }
+			bool operator==( const __stIterator& b ) const{ return __p_node == b.__p_node; }
+			bool operator!=( const __stIterator& b ) const{ return __p_node != b.__p_node; }
 		
-			value_type& operator*() { return __p_node->m_data; }
+			value_type& operator*() { return __p_node->m_val; }
+			value_type* operator->() { return &__p_node->m_val; }
 		};
 		// 基本类型定义
-		using node_t = stNode;
 		using iterator = __stIterator;
 	private:
 		stNode    * __p_root;            // 根节点
@@ -114,7 +121,7 @@ namespace wheels
 		std::mutex  __m_mutex;
 #endif
 	public:
-		rbTree() : __p_root(nullptr) , __m_count(0), __m_deep(0) {}
+		rbTree() : __p_root(nullptr) , __m_count(0) {}
 		
 		virtual ~rbTree(){
 #if THREAD_SAFE
@@ -150,8 +157,6 @@ namespace wheels
 #endif			
 			// 查找节点
 			while (curr && curr->m_key != key ) {
-				parent = curr;
-
 				if (key < curr->m_key) {
 					curr = curr->p_left;
 				} else {
@@ -172,8 +177,6 @@ namespace wheels
 #endif
 			// 查找节点
 			while (curr && curr->m_key != key ) {
-				parent = curr;
-
 				if (key < curr->m_key) {
 					curr = curr->p_left;
 				} else {
@@ -187,13 +190,12 @@ namespace wheels
 		 * @brief 取数据内容。重载了下标运算符，方便获取数据
 		 */
 		dataType& operator[]( const keyType& key ){
+			node_t * curr = __p_root;
 #if THREAD_SAFE
 			std::lock_guard< std::mutex > lck( __m_mutex );
 #endif
 			// 查找节点
 			while (curr && curr->m_key != key ) {
-				parent = curr;
-
 				if (key < curr->m_key) {
 					curr = curr->p_left;
 				} else {
@@ -212,6 +214,7 @@ namespace wheels
 		 * @return 成功操作返回true,否则返回false
 		 */
 		bool insert(const keyType& key , const dataType& val) {
+			bool ret = true;
 			try{
 #if THREAD_SAFE
 				std::lock_guard< std::mutex > lck( __m_mutex );
@@ -231,17 +234,19 @@ namespace wheels
 					} else if( key > curr->m_key ){
 						curr = curr->p_right;
 					}else{ // 说明数据已经存在
+						std::cerr << "数据已经存在" << std::endl;
 						return false;
 					}
 				}
-
-				__m_count ++;
-				if (val < parent->val) {
+				
+				if ( key < parent->m_key) {
 					parent->p_left = new stNode( key , val , RED );
-					return __fix_insertion(parent->p_left);
+					__m_count ++;
+				        __fix_insertion(parent->p_left);
 				} else {
 					parent->p_right = new stNode( key , val , RED );
-					return __fix_insertion(parent->p_right );
+					__m_count ++;
+					__fix_insertion(parent->p_right );
 				}
 			}catch( std::bad_alloc& e ){
 				std::cerr << e.what() << std::endl;
@@ -280,7 +285,7 @@ namespace wheels
 					__fix_deletion(parent, nullptr);
 				} else {
 					parent->p_right = nullptr;
-					p_fix_deletion(parent, nullptr);
+					__fix_deletion(parent, nullptr);
 				}
 			} else if (curr->p_left && curr->p_right) {
 				stNode* succ = curr->p_right;
@@ -297,22 +302,22 @@ namespace wheels
 				if (succ == parent->p_left) {
 					parent->p_left = succ->p_right;
 				} else {
-					parent->right = succ->p_right;
+					parent->p_right = succ->p_right;
 				}
 
-				fix_deletion(parent, succ->p_right);
+				__fix_deletion(parent, succ->p_right);
 			} else {
 				stNode* child = curr->p_left ? curr->p_left : curr->p_right;
 
 				if (curr == __p_root ) { // 节点是根节点
 					__p_root = __p_root->p_left ? __p_root->p_left : __p_root->p_right;
 					__p_root->m_color = BLACK;
-				} else if (curr == parent->__p_left) {
+				} else if (curr == parent -> p_left) {
 					parent->p_left = child;
-					fix_deletion(parent, child);
+					__fix_deletion(parent, child);
 				} else {
 					parent->p_right = child;
-					fix_deletion(parent, child);
+					__fix_deletion(parent, child);
 				}
 			}
 
@@ -335,52 +340,56 @@ namespace wheels
 			if( node->p_right ){
 				__release( node->p_right );
 			}
-
-			node_t * parent = __get_parent( node );
-			if( parent->p_left == node ){
-				parent->p_left = nullptr;
-			}else{
-				parent->p_right = nullptr;
-			}
+			delete node;
 		}
 		/**
 		 * @brief 插入后平衡操作
 		 */
 		void __fix_insertion( stNode* node) {
-			while (node != __p_root && node->m_color && node->p_left->m_color && node->p_right->m_color ) {
-				stNode* parent = __get_parent(node);
-				stNode* grandparent = __get_parent(parent);
-				stNode* uncle = __get_uncle(node);
-
-				if (uncle && uncle->m_clolor) {
-					parent->m_color = BLACK;
-					uncle->m_color = BLACK;
-					grandparent->is_red = RED;
-					node = grandparent;
-				} else {
-					if (node == parent->p_right && parent == grandparent->p_left) {
-						__rotate_left(parent);
-						node = node->p_left;
-					} else if (node == parent->p_left == grandparent->p_right) {
-						__rotate_right(parent);
-						node = node->p_right;
-					}
-
-					parent = __get_parent(node);
-					grandparent = __get_parent(parent);
-
-					if (node == parent->p_left) {
-						__rotate_right(grandparent);
+			if( node == nullptr ) return;
+			node_t * parent = __get_parent( node );
+			if( parent == nullptr ) return;
+			node_t * grand = __get_parent( parent );
+			
+			while (parent != nullptr && parent->m_color == RED) {
+				if ( parent == grand->p_left) { // 祖父的左孩子
+					node_t *y = grand->p_right;
+					if (y != nullptr && y->m_color == RED) {
+						parent->m_color = BLACK;
+						y->m_color = BLACK;
+						grand->m_color = RED;
+						node = grand;
 					} else {
-						__rotate_left(grandparent);
+						if (node == parent->p_right) {
+							node = parent;
+							__rotate_left( node );
+						}
+						parent->m_color = BLACK;
+						grand->m_color = RED;
+						__rotate_right(grand);
 					}
-
-					parent->m_color = BLACK;
-					grandparent->m_color = RED;
+				} else {
+					node_t *y = grand->p_left;
+					if (y != nullptr && y->m_color == RED) {
+						parent->m_color = BLACK;
+						y->m_color = BLACK;
+						grand->m_color = RED;
+						node = grand;
+					} else {
+						if (node == parent->p_left) {
+							node = parent;
+							__rotate_right( node );
+						}
+						parent->m_color = BLACK;
+						grand->m_color = RED;
+						__rotate_left( grand );
+					}
 				}
-			}
 
-			root->is_red = BLACK;
+				parent = __get_parent( node );
+				grand = __get_parent( parent );
+			}
+			__p_root->m_color = BLACK;
 		}
 
 		/**
@@ -393,7 +402,7 @@ namespace wheels
 
 					if (sibling-> m_color ) {
 						sibling->m_color = BLACK;
-						parent->is_red = RED;
+						parent->m_color = RED;
 						__rotate_left(parent);
 						sibling = parent->p_right;
 					}
@@ -403,7 +412,7 @@ namespace wheels
 						node = parent;
 						parent = __get_parent(node);
 					} else {
-						if (!sibling->right->is_red) {
+						if (!sibling -> p_right->m_color ) {
 							sibling->p_left->m_color = BLACK;
 							sibling->m_color = RED;
 							__rotate_right(sibling);
@@ -412,19 +421,19 @@ namespace wheels
 
 						sibling->m_color = parent->m_color;
 						parent->m_color = BLACK;
-						sibling->p_right->is_red = BLACK;
+						sibling->p_right->m_color = BLACK;
 						__rotate_left(parent);
 						node = __p_root;
 					}
 				} else {
-					stNode* sibling = parent->p_left
+					stNode* sibling = parent->p_left;
 
-						if (sibling->m_color) {
-							sibling->m_color = BLACK;
-							parent->m_color = RED;
-							__rotate_right(parent);
-							sibling = parent->p_left;
-						}
+					if (sibling->m_color) {
+						sibling->m_color = BLACK;
+						parent->m_color = RED;
+						__rotate_right(parent);
+						sibling = parent->p_left;
+					}
 
 					if (!sibling->p_left->m_color && !sibling->p_right->m_color) {
 						sibling->m_color = RED;
@@ -448,7 +457,7 @@ namespace wheels
 			}
 
 			if (node) {
-				node->is_red = BLACK;
+				node->m_color = BLACK;
 			}
 		}
 		/**
@@ -459,7 +468,7 @@ namespace wheels
 				return nullptr;
 			}
 
-			if (node == root.get()) {
+			if (node == __p_root) {
 				return nullptr;
 			}
 
@@ -469,7 +478,7 @@ namespace wheels
 			while (curr && curr != node) {
 				parent = curr;
 
-				if (node->val < curr->val) {
+				if (node->m_key < curr->m_key ) {
 					curr = curr->p_left;
 				} else {
 					curr = curr->p_right;
@@ -502,8 +511,8 @@ namespace wheels
 			stNode* right = node->p_right;
 			stNode* parent = __get_parent(node);
 
-			if (node == p_root ) {
-				root = node->p_right;
+			if (node == __p_root ) {
+				__p_root = node->p_right;
 			} else if (node == parent->p_left ) {
 				parent->p_left = node->p_right;
 			} else {
@@ -521,14 +530,14 @@ namespace wheels
 			stNode* parent = __get_parent(node);
 
 			if (node == __p_root ) {
-				root = node->p_left;
+				__p_root = node->p_left;
 			} else if (node == parent->p_left ) {
 				parent->p_left = node->p_left;
 			} else {
 				parent->p_right = node->p_left;
 			}
 
-			node->p_left = left->right;
+			node->p_left = left->p_right;
 			left->p_right = node;
 		}
 	};
