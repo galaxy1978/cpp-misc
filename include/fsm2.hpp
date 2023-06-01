@@ -208,7 +208,7 @@ namespace wheels
 				__m_stat.insert( std::make_pair( start , s ) );
 			}
 
-			fsm2( const statType& start , const std::string& end )
+			fsm2( const statType& start , const statType& end )
 				: __m_start( start ), __m_end( end ), __m_curr( start ), __m_is_running( false ){
 				if( start.empty() ) throw ERR_STAT_ID_EMPTY;
 				if( end.empty() ) throw ERR_STAT_ID_EMPTY;
@@ -752,7 +752,6 @@ namespace wheels
 #    define onFsm2RAISE( statType , type , fun ) [&]( const statType& fs , const std::string& ts , const type::stDataItem& data){ fun( fs , ts , data ); }
 #    define onFsm2LEAVE( statType , type , fun ) [&]( const statType& s, const type::stDataItem& data )->std::string{ return fun( s , data ); }
 #else
-     template< typename dataT > class fsm2< std::string , dataT >{};
 #    define onFsm2ENT( fun ) [&]( const std::string& s, const fsm2::stDataItem& data )->bool{ return fun( s , data ); }
 #    define onFsm2RAISE( fun ) [&]( const std::string& fs , const std::string& ts , const fsm2::stDataItem& data){ fun( fs , ts , data ); }
 #    define onFsm2LEAVE( fun ) [&]( const std::string& s, const fsm2::stDataItem& data )->std::string{ return fun( s , data ); }
