@@ -19,7 +19,7 @@ namespace wheels
 		 * @brief 数据改变的模块
 		 */
 		class subject {
-		proteted:
+		protected:
 			/**
 			 * @brief 抽取tuple数据内容构造参数表的vector
 			 */
@@ -56,7 +56,7 @@ namespace wheels
 			 */
 			void addObserver( obsvFunc_t func ) {
 				static_assert( std::is_base_of< observer , observer> :: value , "" );
-				__m_func_obsv.push_back( obsv );
+				__m_func_obsv.push_back( func );
 			}
 			/**
 			 * @brief 移除观察者对象
