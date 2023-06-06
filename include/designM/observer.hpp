@@ -23,7 +23,7 @@ namespace wheels
 		class subject {
 		proteted:
 			/**
-			 * 
+			 * @brief 抽取tuple数据内容构造参数表的vector
 			 */
 			template< int N >
 			struct __FOR{
@@ -40,24 +40,38 @@ namespace wheels
 				}
 			};
 		public:
+			using obsvFunc_t = std::function< void ( const std::vector<wheels::variant>& ) >;
+		public:
+			subject(){}
+			virtual ~subject(){}
 			/**
-			 * @brief 
+			 * @brief 添加观察者对象
 			 */
 			template< typename obsvType >
 			void addObserver( obsvType* obsv ) {
 				static_assert( std::is_base_of< observer , observer> :: value , "" );
-				observers.push_back( obsv );
+				__m_observers.push_back( obsv );
+			}
+
+			/**
+			 * @brief 添加观察者函数
+			 */
+			void addObserver( obsvFunc_t func ) {
+				static_assert( std::is_base_of< observer , observer> :: value , "" );
+				__m_func_obsv.push_back( obsv );
 			}
 			/**
+			 * @brief 移除观察者对象
 			 */
 			void removeObserver( observer* obsv ) {
-				auto it = std::find(observers.begin(), observers.end(), observer);
+				auto it = std::find(__m_observers.begin(), __m_observers.end(), obsv );
 				if (it != observers.end()) {
-					observers.erase(it);
+					__m_observers.erase(it);
 				}
 			}
 
 			/**
+			 * @brief 执行通知操作
 			 */
 			template< typename ...Args >
 			void notifyObservers( Args&... args) {
@@ -70,10 +84,15 @@ namespace wheels
 				for (auto obsv : __m_observers) {
 					obsv->update( param );
 				}
+
+				for (auto obsv : __m_func_obsv) {
+					obsv( param );
+				}
 			}
 
 		private:
 			std::vector< observer* > __m_observers;
+			std::vector< obsvFunc_t >  __m_func_obsv;
 		};
 	}
 }
