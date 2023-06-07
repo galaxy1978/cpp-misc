@@ -90,6 +90,8 @@ namespace wheels
 				if( it != __m_strates.end() ){
 					return it->second((0,args)...);
 				}
+
+                throw std::runtime_error( "can not find algorithm." );
 			}
 		};
 	}
