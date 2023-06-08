@@ -1,4 +1,6 @@
+#include <iostream>
 #include <vector>
+#include <algorithm>
 #include <functional>
 #include <tuple>
 
@@ -9,87 +11,126 @@ namespace wheels
 	namespace dm
 	{
 		/**
-		 * @brief 观察数据变化的模块接口。
+		 * @brief 观察数据变化的模块接口
 		 */
 		class observer {
 		public:
 			virtual void update( const std::vector< wheels::variant> & data ) = 0;
+			// 内部使用
+			virtual bool needRelease(){ return false; }
 		};
 		/**
-		 * @brief 数据改变的模块。这个是通知发出的模块，实际使用的时候可以采用组合的方式也可以采用继承的方式
+		 * @brief 数据改变的模块
 		 */
 		class subject {
+		public:
+			using obsvFunc_t = std::function< void ( const std::vector<wheels::variant>& ) >;
 		protected:
 			/**
 			 * @brief 抽取tuple数据内容构造参数表的vector
 			 */
-			template< int N > struct __FOR{
+			template< int N >
+			struct FOR__{
 				static void extract( std::vector< wheels::variant >& param , const std::tuple<>& t ){
 					param[ N ] = wheels::variant::make( std::get< N >( t ) );
-					__FOR< N - 1 >::extract( param , t );
+					FOR__< N - 1 >::extract( param , t );
 				}
 			};
-			template<> struct __FOR<0>{
+
+			template<>
+			struct FOR__<0>{
 				static void extract( std::vector< wheels::variant > param , const std::tuple<>& t ){
 					param[ 0 ] = wheels::variant::make( std::get< 0 >( t ) );
 				}
 			};
-		public:
-			// 这个是为了std::function方式的接口所引入的定义
-			using obsvFunc_t = std::function< void ( const std::vector<wheels::variant>& ) >;
+
+			class observer__ : public observer__{
+			private:
+				obsvFunc_t  m_func__;
+			public:
+				observer__( obsvFunc_t func ):m_func__( func ){}
+				virtual ~observer__(){}
+				
+				virtual void update( const std::vector< wheels::variant > & data ) final{ m_func__( data ); }
+				virtual bool needRelease() final{ return true; }
+			};
+		
 		public:
 			subject(){}
 			virtual ~subject(){}
 			/**
-			 * @brief 添加观察者对象。
+			 * @brief 添加观察者对象
 			 */
-			template< typename obsvType , typename midType = typename std::decay< obsvType >::type ,
-										  typename realType = std::coniditional< std::is_pointer< midType >::value , 
-																	typename std::remove_pointer< midType >::type,
-																	midType >
-													>
+			template<
+				typename obsvType ,
+				typename midType = typename std::enable_if< std::is_base_of< observer , obsvType > :: value ,obsvType >::type ,
+				typename mid2Type = typename std::decay< midType >::type,
+				typename realType = std::conditional<
+				                std::is_pointer< mid2Type >::value ,
+				                typename std::remove_pointer< mid2Type >::type,
+				                mid2Type
+					>
+				>
 			void addObserver( realType* obsv ) {
-				static_assert( std::is_base_of< observer , realType> :: value , "" );
-				__m_observers.push_back( obsv );
+				std::lock_guard< std::mutex > lck( m_mutex__ );
+				m_observers__.push_back( obsv );
 			}
 
 			/**
-			 * @brief 添加观察者函数。这个是添加函数对象类型的观察者
+			 * @brief 添加观察者函数
 			 */
-			void addObserver( obsvFunc_t func ) {
-				__m_func_obsv.push_back( func );
+			observer* addObserver( obsvFunc_t func ) {
+				observer * ret = nullptr;
+				try{
+					ret = new observer__(  func );
+					{
+						std::lock_guard< std::mutex > lck( m_mutex__ );
+						m_observers__.push_back( ret );
+					}
+				}catch( std::bad_alloc& e ){
+					std::cout << e.what() <<std::endl;
+				}
+
+				return ret;
 			}
 			/**
-			 * @brief 移除观察者对象。
+			 * @brief 移除观察者对象
 			 */
 			void removeObserver( observer* obsv ) {
-				auto it = std::find(__m_observers.begin(), __m_observers.end(), obsv );
+				std::lock_guard< std::mutex > lck_( m_mutex__ );
+				if( m_observers__.size() == 0 ) return;
+				
+				auto it = std::find(m_observers__.begin(), m_observers__.end(), obsv );
 				if (it != observers.end()) {
-					__m_observers.erase(it);
+					if( (*it)->needRelease() ){
+						delete ( *it );
+					}
+					m_observers__.erase(it);
 				}
 			}
 
+			/**
+			 * @brief 执行通知操作
+			 */
 			template< typename ...Args >
 			void notifyObservers( Args&... args) {
-
+				// 构造variant数组
 				std::tuple<> t = std::make_tuple(args...);
-
 				std::vector< wheels::variant >   param( sizeof...( args ) );
-
-				__FOR< sizeof...(args) >::extract( param, t );
-
-				for (auto obsv : __m_observers) {
-					obsv->update( param );
-				}
+				// 从tuple抽取参数构造成 std::vector< wheels::variant >
+				FOR__< sizeof...(args) >::extract( param, t );
 				
-				for (auto obsv : __m_func_obsv) {
-					obsv( param );
+				for (auto obsv : m_observers__) {
+					std::lock_guard< std::mutex > lck( m_mutex__ );
+					obsv->update( param );
 				}
 			}
 
 		private:
-			std::vector< observer* > __m_observers;
-			std::vector< obsvFunc_t >  __m_func_obsv;
+			std::mutex                 m_mutex__;
+			std::vector< observer* >   m_observers__;
+			std::vector< obsvFunc_t >  m_func_obsv__;
 		};
 	}
 }
+
