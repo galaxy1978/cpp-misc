@@ -129,7 +129,6 @@ namespace wheels
 		private:
 			std::mutex                 m_mutex__;
 			std::vector< observer* >   m_observers__;
-			std::vector< obsvFunc_t >  m_func_obsv__;
 		};
 	}
 }
