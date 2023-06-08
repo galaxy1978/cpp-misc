@@ -72,7 +72,7 @@ namespace wheels
 					>
 				>
 			void addObserver( realType* obsv ) {
-				std::lock_guard< std::mutex > lck( m_mutex__ );
+				std::unique_lock< std::mutex > lck( m_mutex__ );
 				m_observers__.push_back( obsv );
 			}
 
@@ -84,7 +84,7 @@ namespace wheels
 				try{
 					ret = new observer__(  func );
 					{
-						std::lock_guard< std::mutex > lck( m_mutex__ );
+						std::unique_lock< std::mutex > lck( m_mutex__ );
 						m_observers__.push_back( ret );
 					}
 				}catch( std::bad_alloc& e ){
@@ -97,11 +97,11 @@ namespace wheels
 			 * @brief 移除观察者对象
 			 */
 			void removeObserver( observer* obsv ) {
-				std::lock_guard< std::mutex > lck_( m_mutex__ );
+				std::unique_lock< std::mutex > lck_( m_mutex__ );
 				if( m_observers__.size() == 0 ) return;
 				
 				auto it = std::find(m_observers__.begin(), m_observers__.end(), obsv );
-				if (it != observers.end()) {
+				if (it != m_observers__.end()) {
 					if( (*it)->needRelease() ){
 						delete ( *it );
 					}
@@ -119,9 +119,9 @@ namespace wheels
 				std::vector< wheels::variant >   param( sizeof...( args ) );
 				// 从tuple抽取参数构造成 std::vector< wheels::variant >
 				FOR__< sizeof...(args) >::extract( param, t );
-				
+				std::lock_guard< std::mutex > lck( m_mutex__ );
 				for (auto obsv : m_observers__) {
-					std::lock_guard< std::mutex > lck( m_mutex__ );
+					
 					obsv->update( param );
 				}
 			}
