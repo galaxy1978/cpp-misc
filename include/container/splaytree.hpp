@@ -15,10 +15,15 @@
 
 namespace wheels
 {
-	template< typename keyType , typename dataType , typename midKeyType = typename std::decay< keyType>::type, typename midDataType = typename std::decay< dataType >::type >
+	// 这是一个伸展树的实现，主要是方便了高频访问数据的访问。尽量保证高频访问的数据访问的时候达到O(1)的时间复杂度
+	// 后续软仓中会上传示例代码和完整的代码
+	template< typename keyType , typename dataType ,
+		  typename midKeyType = typename std::decay< keyType>::type,       // 对key类型进行处理，提取实际的类型
+		  typename midDataType = typename std::decay< dataType >::type >   // 对数据类型进行处理，提取实际的类型
 	class splayTree
 	{
 	public:
+		// 进一步提取实际的类型，移除指针修饰
 		using key_type = typename std::conditional< std::is_pointer< midKeyType > ::value ,
 							    typename std::remove_pointer< midKeyType >::type ,
 							    midKeyType >::type;
@@ -26,8 +31,9 @@ namespace wheels
 							      typename std::remove_pointer< midDataType >::type ,
 							      midDataType >::type;
 
+		// 检查提供的数据类型是否满足要求
 		static_assert( std::is_integral< key_type >::value || std::is_enum< key_type >::value || std::is_class< key_type>::value , "key类型必须是整数类型，枚举类型或者类" );
-
+		// 树节点数据结构定义
 		struct stNode {
 			keyType        m_key;
 			value_type     m_data;
@@ -37,11 +43,38 @@ namespace wheels
 
 			stNode(const key_type& k, const value_type& data , stNode* l = nullptr, stNode* r = nullptr, stNode* p = nullptr) :
 				m_key(k), m_data( data ), p_left(l), p_right(r), p_parent(p) {}
+
+			stNode( const stNode& b ):
+				m_key( b.m_key ), m_data( b.m_data ), p_left( nullptr ), p_right( nullptr ), p_parent( nullptr ) {}
+			stNode( stNode&& b ):
+				m_key( std::move( b.m_key ) ), m_data( std::move( b.m_data ) ), p_left( nullptr ), p_right( nullptr ), p_parent( nullptr ) {}
+			stNode& operator=( const stNode& b ){
+				m_key = b.m_key;
+				m_data = b.m_data;
+
+				p_left = nullptr;
+				p_right = nullptr;
+				p_parent = nullptr;
+
+				return *this;
+			}
+
+			stNode& operator=( stNode&& b ){
+				m_key = std::move( b.m_key );
+				m_data = std::move( b.m_data );
+
+				p_left = nullptr;
+				p_right = nullptr;
+				p_parent = nullptr;
+
+				return *this;
+			}
 		};
 
 		using node_t = stNode;
 
-		// 定义迭代器
+		// 定义迭代器，方便后面使用迭代器进行访问，
+		// 因为使用foward_iterator
 		class iterator__ : public std::iterator< std::forward_iterator_tag , node_t >{
 			friend class splayTree;
 		private:
@@ -72,7 +105,7 @@ namespace wheels
 			bool operator != ( const iterator__& b ){
 				return p_node__ != b.p_node__;
 			}
-
+			// 重载->和*
 			node_t * operator->(){
 				if( p_node__ == nullptr ){
 					throw std::runtime_error( "data pointer is null" );
@@ -87,6 +120,7 @@ namespace wheels
 				return p_node__->__m_data;
 			}
 
+			// 进行遍历的++操作符号重载，这里没有重载--，
 			iterator__& operator++(){
 				node_t * top = nullptr;
 				if( m_stack__.size() > 0 ){
@@ -127,15 +161,15 @@ namespace wheels
 			}
 		};
 
-
+		// 定义一个满足通常STL习惯的迭代器名字
 		using iterator = iterator__;
 
 	private:
-		node_t        * p_root__;
+		node_t        * p_root__;            // 根节点
 		size_t          m_count__;
 	private:
 		/**
-		 * @brief 左旋
+		 * @brief 左旋，进行伸展旋转的左旋
 		 */
 		void rotate_left__( node_t * x) {
 			node_t* y = x->p_right;
@@ -157,7 +191,7 @@ namespace wheels
 			x->p_parent = y;
 		}
 		/**
-		 * @brief 右旋
+		 * @brief 右旋，
 		 */
 		void rotate_right__(node_t* x) {
 			node_t* y = x->p_left;
@@ -179,7 +213,7 @@ namespace wheels
 			x->p_parent = y;
 		}
 		/**
-		 * @brief 伸展
+		 * @brief 伸展，实际执行伸展的操作，吸取网友提醒，将私有方法或者变量标记采用__后缀
 		 */
 		void splay__(node_t* x) {
 			while (x->p_parent != nullptr) {
@@ -206,7 +240,7 @@ namespace wheels
 			}
 		}
 		/**
-		 * @brief 查找节点
+		 * @brief 查找节点，根据key进行查找，
 		 * @param key[ I ], 节点键
 		 * @return 成功找到返回节点指针否则返回nullptr
 		 */
@@ -225,11 +259,27 @@ namespace wheels
 		}
 
 	public:
+		// 公有的接口
 		splayTree() : p_root__(nullptr) , m_count__(0){}
+		splayTree( splayTree&& b ):p_root__( b.p_root__ ),m_count__( b.m_count__ ){
+			b.p_root__ = nullptr;
+			b.m_count = 0;
+		}
+		
 		virtual ~splayTree(){
 			clear();
 		}
 
+		splayTree& operator( splayTree&& b ){
+			p_root__ = b.p_root__;
+			m_count__ = b.m_count__;
+
+			b.p_root__ = nullptr;
+			b.m_count__ = nullptr;
+
+			return *this;
+		}
+		// 迭代器的接口
 		iterator begin(){ return iterator(p_root__); }
 		iterator end(){ return iterator( nullptr ); }
 		/**
@@ -237,6 +287,9 @@ namespace wheels
 		 */
 		const key_type& key( iterator it ){ return it.key(); }
 		/**
+		 * @brief 插入节点。在这个程序的实现中没有采用递归的方式实现。但是实际递归的方式更容易立即，虽然这种方式效率可能会比较低
+		 * @param key[ I ], 节点的key
+		 * @param data，实际的数据内容
 		 */
 		bool insert(const key_type& key , const value_type& data ) {
 			bool ret = true;
@@ -280,7 +333,7 @@ namespace wheels
 			return ret;
 		}
 		/**
-		 * @brief 删除指定件节点
+		 * @brief 删除指定件节点,按照key进行删除操作
 		 */
 		void remove(const key_type& key) {
 			node_t* x = find_node__(key);
@@ -313,7 +366,7 @@ namespace wheels
 			delete x;
 		}
 		/**
-		 * @brief 判断是否存在指定key的数据
+		 * @brief 判断是否存在指定key的数据，如果存在指定的key返回true
 		 * @param key
 		 * @return 
 		 */
@@ -321,17 +374,20 @@ namespace wheels
 			return find_node__(key) != nullptr;
 		}
 
+		/**
+		 * @brief 清楚数据
+		 */
 		void clear() {
 			while (p_root__ != nullptr) {
 				remove(p_root__->key);
 			}
 		}
 		/**
-		 * 
+		 * 遍历树，通过回调函数进行处理。如果回调函数返回false，则结束遍历
 		 */
 		void for_each(std::function< bool (const key_type&, const value_type&)> func) {
 			if (p_root__ == nullptr) { return; }
-			std::stack<node_t*> stk;
+			std::stack<node_t*> stk;   // 依然没有采用递归的方式
 			node_t* p = p_root__;
 			while (p != nullptr || !stk.empty()) {
 				while (p != nullptr) {
@@ -341,6 +397,7 @@ namespace wheels
 				if (!stk.empty()) {
 					p = stk.top();
 					stk.pop();
+					// 在治理
 					bool rst = func(p->key, p->data);
 					if( rst == false ){
 						break;
