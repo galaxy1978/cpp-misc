@@ -15,7 +15,7 @@ namespace wheels
 	template <typename dataType , typename midType = typename std::decay< dataType >::type >
 	class tree {
 	public:
-		using value_type = std::conditional< std::is_pointer< midType >:: value , typename std::remove_pointer< midType >::type , midType >
+		using value_type = std::conditional< std::is_pointer< midType >:: value , typename std::remove_pointer< midType >::type , midType >;
 	public:
 		
 		class treeNode {
@@ -45,6 +45,7 @@ namespace wheels
 
 				if (p_first_child == child) {
 					first_child = p_first_child->p_next_sibling;
+                    p_first_child = first_child;
 					return;
 				}
 
