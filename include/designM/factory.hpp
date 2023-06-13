@@ -47,7 +47,7 @@ using namespace wheels
 				OK = 0
 			};
 
-			template< typename Args... >
+			template< typename ...Args >
 			static realType * factory( std::functional< void (Factory::emErrCode) > errfun , Args... args ){
 				realType * ret = nullptr;
 				try{
@@ -62,7 +62,7 @@ using namespace wheels
 				return ret;
 			}
 
-			template< typename Args... >
+			template< typename ...Args >
 			static realType * factory( Args... args ){
 				realType * ret = nullptr;
 				try{
@@ -99,7 +99,7 @@ using namespace wheels
 		 *                      // 错误处理
 		 *                } , 23 );
 		 */
-		template< typename type , typename Args... ,
+		template< typename type , typename ...Args ,
 			  typename midType = typename std::decay< type >::type,
 			  typename realType = std::conditional<
 				  std::is_pointer< midType >::value ,
@@ -131,7 +131,7 @@ using namespace wheels
 		 * @param args [ I ], 构造函数的参数表
 		 * @param errfun[ I ],发生错误的回调函数
 		 */
-		template< typename type , typename Args... ,
+		template< typename type , typename ...Args ,
 			  typename midType = typename std::decay< type >::type,
 			  typename realType = std::conditional<
 				  std::is_pointer< midType >::value ,
@@ -145,7 +145,7 @@ using namespace wheels
 			
 			realType * ret = nullptr;
 			try{
-				realType * ret = new reakType( (0,args)... );
+				realType * ret = new realType( (0,args)... );
 			}catch( std::bad_alloc& e ){
 				std::cout << e.what() << std::endl;
 			}
