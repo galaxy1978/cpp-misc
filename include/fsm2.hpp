@@ -133,7 +133,61 @@ namespace wheels
 				}
 
 			};
-
+			
+			struct transKeyType
+			{
+				statType    m_from;
+				statType    m_to;
+				
+				transKeyType( const statType& f , const statType& t ):m_from( f ) , m_to( t ){}
+				transKeyType( const transKeyType& b ):m_from( b.m_from) , m_to( b.m_to ){}
+				transKeyType& operator=( const transKeyType& b ){
+					m_from = b.m_from;
+					m_to = b.m_to;
+					
+					return *this;
+				}
+				
+				bool operator==( const transKeyType& b )
+				{
+					bool ret = false;
+					ret = ( m_from == b.m_from && m_to == b.m_to );
+					return ret;
+				}
+				
+				bool operator!=( const transKeyType& b )
+				{
+					bool ret = false;
+					ret = ( m_from != b.m_from | m_to != b.m_to );
+					return ret;
+				}
+				
+				bool operator<( const transKeyType& b ) const{
+					if( m_from < b.m_from ) return true;
+					if( m_from == b.m_from ){
+						if( m_to < b.m_to ){
+							return true;
+						}
+						return false;
+					}
+					
+					return false;
+				}
+				
+				bool operator>( const transKeyType& b ) const{
+					if( m_from > b.m_from ) return true;
+					if( m_from == b.m_from ){
+						if( m_to > b.m_to ){
+							return true;
+						}
+						return false;
+					}
+					
+					return false;
+				}
+			};
+			
+			
 			struct trans : public base__
 			{
 				statType   m_from;
@@ -163,8 +217,8 @@ namespace wheels
 
 			};
 
-			using transTbl_t = std::map< statType , trans* > ;
-			using statTbl_t     = std::map< statType , state * >;
+			using transTbl_t = std::map< transKeyType , trans* > ;
+			using statTbl_t  = std::map< statType , state * >;
 
 		private:
 			statType     	        m_start__;         // 起始状态
@@ -172,10 +226,10 @@ namespace wheels
 			statType                m_curr__;          // 当前状态
 			statType                m_next__;
 			std::atomic<bool>       m_is_running__;    //
-			stDataItem      	m_data__;          // 缓冲数据
+			stDataItem      	    m_data__;          // 缓冲数据
 
-			statTbl_t       	m_stat__;          // 状态表
-			transTbl_t      	m_trans__;         // 状态表数据
+			statTbl_t       	    m_stat__;          // 状态表
+			transTbl_t      	    m_trans__;         // 状态表数据
 
 		public:
 			fsm2() {}
@@ -190,8 +244,6 @@ namespace wheels
 			fsm2( const statType& start , enterFun_t entfun ):
 				m_start__( start ) , m_curr__( start ), m_is_running__( false )
 				{
-					if( start.empty() ) throw ERR_STAT_ID_EMPTY;
-
 					state * s = new state( start , START );
 					s->cb_enter = entfun;
 					m_stat__.insert( std::make_pair( start , s ) );
@@ -199,7 +251,6 @@ namespace wheels
 
 			fsm2( const statType& start , enterFun_t entfun , leaveFun_t leavefun ):
 				m_start__( start ) , m_curr__( start ), m_is_running__( false )	{
-				if( start.empty() ) throw ERR_STAT_ID_EMPTY;
 
 				state * s = new state( start , START );
 				s->cb_enter = entfun;
@@ -210,8 +261,6 @@ namespace wheels
 
 			fsm2( const statType& start , const statType& end )
 				: m_start__( start ), m_end__( end ), m_curr__( start ), m_is_running__( false ){
-				if( start.empty() ) throw ERR_STAT_ID_EMPTY;
-				if( end.empty() ) throw ERR_STAT_ID_EMPTY;
 
 				state *s = new state( start , START ) ,  * e = new state( end , END );
 
@@ -240,7 +289,6 @@ namespace wheels
 			 */
 			emErrCode add( const statType& stat , enterFun_t ent ){
 				emErrCode ret = OK;
-				if( stat.empty() ) return ERR_STAT_ID_EMPTY;
 
 				if( !has_stat__( stat ) ){
 					add_stat__( stat , ent );
@@ -260,7 +308,6 @@ namespace wheels
 			 */
 			emErrCode add( const statType& stat , leaveFun_t leave ){
 				emErrCode ret = OK;
-				if( stat.empty() ) return ERR_STAT_ID_EMPTY;
 
 				if( !has_stat__( stat ) ){
 					add_stat__( stat );
@@ -278,7 +325,6 @@ namespace wheels
 			 */
 			emErrCode add( const statType& stat, enterFun_t ent , leaveFun_t leave ){
 				emErrCode ret = OK;
-				if( stat.empty() ) return ERR_STAT_ID_EMPTY;
 				if( has_stat__( stat ) == false ){
 					add_stat__( stat , ent , leave );
 				}
@@ -319,8 +365,6 @@ namespace wheels
 			 */
 			emErrCode add( const statType& from , const statType& to )	{
 				emErrCode ret = OK;
-				if( from.empty() ) return ERR_STAT_ID_EMPTY;
-				if( to.empty() ) return ERR_STAT_ID_EMPTY;
 
 				if( !has_stat__( from ) ){
 					add_stat__( from );
@@ -339,8 +383,6 @@ namespace wheels
 
 			emErrCode add( const statType& from , const statType& to , raiseFun_t raise ){
 				emErrCode ret = OK;
-				if( from.empty() ) return ERR_STAT_ID_EMPTY;
-				if( to.empty() ) return ERR_STAT_ID_EMPTY;
 
 				if( !has_stat__( from ) ){
 					add_stat__( from );
@@ -353,7 +395,7 @@ namespace wheels
 				if( has_trans__( from , to ) == false ){
 					add_trans__( from , to , raise );
 				}else{
-					auto it = m_trans__.find( from + to );
+					auto it = m_trans__.find( transKeyType( from , to ) );
 					if( it != m_trans__.end() ){
 						it->second->cb_raise = raise;
 					}
@@ -362,30 +404,8 @@ namespace wheels
 				return ret;
 			}
 
-			emErrCode add( const statType& from , const statType& to , leaveFun_t leave  ){
-				emErrCode ret = OK;
-				if( from.empty() ) return ERR_STAT_ID_EMPTY;
-				if( to.empty() ) return ERR_STAT_ID_EMPTY;
-
-				if( has_stat__( from ) == false ){
-					add_stat__( from );
-				}
-				set_leave__( from , leave );
-				if( has_stat__( to ) == false ){
-					add_stat__( to );
-				}
-
-				if( has_trans__( from , to ) == false ){
-					add_trans__( from , to );
-				}
-
-				return ret;
-			}
-
 			emErrCode add( const statType& from , const statType& to , leaveFun_t leave  , raiseFun_t raise ){
 				emErrCode ret = OK;
-				if( from.empty() ) return ERR_STAT_ID_EMPTY;
-				if( to.empty() ) return ERR_STAT_ID_EMPTY;
 
 				if( has_stat__( from ) == false ){
 					add_stat__( from );
@@ -398,7 +418,7 @@ namespace wheels
 				if( has_trans__( from , to ) == false ){
 					add_trans__( from , to , raise );
 				}else{
-					auto it = m_trans__.find( from + to );
+					auto it = m_trans__.find( transKeyType( from , to ) );
 					if( it != m_trans__.end() ){
 						it->second->cb_raise = raise;
 					}
@@ -413,8 +433,6 @@ namespace wheels
 			emErrCode add( const statType& from , const statType& to , enterFun_t ent , raiseFun_t raise ){
 				emErrCode ret = OK;
 
-				if( from.empty() ) return ERR_STAT_ID_EMPTY;
-				if( to.empty() ) return ERR_STAT_ID_EMPTY;
 				if( !has_stat__( from )){
 					add_stat__( from );
 				}
@@ -448,9 +466,7 @@ namespace wheels
 			 */
 			emErrCode add( const statType& from , const statType& to , enterFun_t ent , leaveFun_t leave ){
 				emErrCode ret = OK;
-				if( from.empty() ) return ERR_STAT_ID_EMPTY;
-				if( to.empty() ) return ERR_STAT_ID_EMPTY;
-
+				
 				if( !has_stat__( from ) ){
 					add_stat__( from );
 				}
@@ -472,9 +488,6 @@ namespace wheels
 			 */
 			emErrCode add( const statType& from , const statType to,  enterFun_t ent , leaveFun_t leave , raiseFun_t raise ){
 				emErrCode ret = OK;
-				if( from.empty() ) return ERR_STAT_ID_EMPTY;
-				if( to.empty() ) return ERR_STAT_ID_EMPTY;
-
 				if( !has_stat__( to ) ){
 					add_stat__( to , ent );
 				}
@@ -504,12 +517,19 @@ namespace wheels
 					bool r = it->second->cb_enter( m_start__ , m_data__ );
 					m_curr__ = m_start__;
 					if( r == AUTO_RUN && it->second->cb_leave ){
-						std::string next = it->second->cb_leave( m_start__ , m_data__ );
+						statType next = it->second->cb_leave( m_start__ , m_data__ );
 						transform( next );
 					}
 				}
 
 				MSG( "状态机就绪" , TGREEN );
+			}
+			
+			void reset()
+			{
+				clearRaw();
+				m_is_running__ = false;
+				start();
 			}
 			/**
 			 * @brief 判断状态机是否正在运行
@@ -530,7 +550,7 @@ namespace wheels
 					return ERR_STAT_NOT_DEFINED;
 				}
 
-				auto tIt = m_trans__.find( m_curr__ + next );
+				auto tIt = m_trans__.find( transKeyType( m_curr__ ,next ) );
 				if( tIt != m_trans__.end() ){ // 执行转换操作。
 					if( tIt->second->cb_raise ){
 						tIt->second->cb_raise( m_curr__ , next , m_data__ );
@@ -544,7 +564,7 @@ namespace wheels
 				if( it != m_stat__.end() && it->second->cb_enter ){
 					bool rst = it->second->cb_enter( m_curr__ , m_data__ );
 					if( rst == AUTO_RUN ){
-						std::string n = it->second->cb_leave( m_curr__  , m_data__ );
+						statType n = it->second->cb_leave( m_curr__  , m_data__ );
 						// 如果有自动转换的节点，则递归调用进行状态转换
 						ret = transform( n );
 					}
@@ -581,7 +601,7 @@ namespace wheels
 					m_is_running__ = false;
 				}
 				// 2） 执行状态准换过程，这个是离开上一个几点还未到下一个节点的动作
-				auto tIt = m_trans__.find( m_curr__ + m_next__ );
+				auto tIt = m_trans__.find( transKeyType( m_curr__ , m_next__ ) );
 				// 执行转换操作。
 				if( tIt != m_trans__.end() &&  tIt->second->cb_raise ){ // 如果转换包含了raise函数，则执行raise函数通知外部进行处理
 					tIt->second->cb_raise( m_curr__ , m_next__ , m_data__ );
@@ -596,7 +616,7 @@ namespace wheels
 					bool rst = it->second->cb_enter( m_curr__ , m_data__ );
 					// 如果状态需要自动转换
 					if( rst == AUTO_RUN ){
-						std::string next = it->second->cb_leave( m_curr__  , m_data__ );
+						statType next = it->second->cb_leave( m_curr__  , m_data__ );
 						ret = transform( next );
 					}
 				}else if( it == m_stat__.end() ){
@@ -665,11 +685,11 @@ namespace wheels
 			 */
 			bool has_trans__( const statType& from , const statType& end ){
 				bool ret = false;
-				ret = ( m_trans__.find( from + end ) != m_trans__.end() );
+				ret = ( m_trans__.find( transKeyType(from , end ) ) != m_trans__.end() );
 				return ret;
 			}
 			void add_stat__( const statType& name ){
-				assert( !name.empty() );
+
 				state * s = new state( name );
 				m_stat__.insert( std::make_pair( name , s ) );
 			}
@@ -679,7 +699,6 @@ namespace wheels
 			 * @param ent[ I ], 进入状态调用的回调函数
 			 */
 			void add_stat__( const statType& name , enterFun_t ent ){
-				assert( !name.empty() );
 				state * s = new state( name );
 				if( ent ){
 					s->cb_enter = ent;
@@ -730,10 +749,10 @@ namespace wheels
 					if( raise ){
 						__t->cb_raise = raise;
 					}
-					std::string key = from + to;
+					transKeyType key( from , to );
 					m_trans__.insert( std::make_pair( key , __t ) );
 				}else{
-					auto it = m_trans__.find( from + to );
+					auto it = m_trans__.find( transKeyType( from , to ));
 					if( it != m_trans__.end() ){
 						it->second->cb_raise = raise;
 					}
@@ -743,14 +762,14 @@ namespace wheels
 			void add_trans__( const statType& from , const statType& to){
 				trans * __t = new trans( from , to );
 
-				std::string key = from + to;
+				transKeyType key( from , to );
 				m_trans__.insert( std::make_pair( key , __t ) );
 			}
 		};
 #if defined( FSM_USE_TYPE )
-#    define onFsm2ENT( statType , type , fun ) [&]( const statType& s, const type::stDataItem& data )->bool{ return fun( s , data ); }
-#    define onFsm2RAISE( statType , type , fun ) [&]( const statType& fs , const std::string& ts , const type::stDataItem& data){ fun( fs , ts , data ); }
-#    define onFsm2LEAVE( statType , type , fun ) [&]( const statType& s, const type::stDataItem& data )->std::string{ return fun( s , data ); }
+#    define onFsm2ENT( type , fun )  [&]( const type& s, const fsm2::stDataItem& data )->bool{ return fun( s , data ); }
+#    define onFsm2RAISE( type ,fun ) [&]( const type& fs , const type& ts , const fsm2::stDataItem& data){ fun( fs , ts , data ); }
+#    define onFsm2LEAVE( type ,fun ) [&]( const type& s, const fsm2::stDataItem& data )->type{ return fun( s , data ); }
 #else
      // template< typename dataT > class fsm2< std::string , dataT >{};
 #    define onFsm2ENT( fun ) [&]( const std::string& s, const fsm2::stDataItem& data )->bool{ return fun( s , data ); }
