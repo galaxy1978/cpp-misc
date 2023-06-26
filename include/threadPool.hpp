@@ -52,16 +52,7 @@ namespace wheels
 		}
 	public:
 		threadPool(size_t numThreads) : m_stop__( true ) , m_count__( numThreads ){}
-		~threadPool() {
-			{
-				std::unique_lock<std::mutex> lock(m_queue_mutex__);
-				m_stop__ = true;
-			}
-			m_condition__.notify_all();
-			for (std::thread& worker : m_works__) {
-				worker.join();
-			}
-		}
+		~threadPool() { stop(); }
 		/**
 		 * @brief 排队任务
 		 */
