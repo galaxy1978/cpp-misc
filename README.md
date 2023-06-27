@@ -1,5 +1,6 @@
 # cppMisc
 #### changelog
+-  2023-6-26 新增了线程成 include/threadPool.hpp
 -  2023-5-28 新增红黑树
 -  2023-5-7 新增variant，任意数据类型， 文件路径container/variant.hpp。这个模块是一个纯头文件的模板类，支持在其他的stl容器中使用这个模块
 -  2023-5-9 新增variant简单介绍文档
