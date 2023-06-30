@@ -33,7 +33,7 @@ virtual ~absFactoryName(){}
 	virtual productName * create_##productName(  paramType1 param ) = 0;
 
 #define ABST_PRODUCT_NAME_2( productName , paramType1 , paramType2 )	\
-	virtual productName * create_##productName( paramType1 , paramType2 ) = 0
+	virtual productName * create_##productName( paramType1 , paramType2 ) = 0;
 
 #define ABST_PRODUCT_NAME_3( productName , paramType1 , paramType2 , paramType3 ) \
 	virtual productName * create_##productName( paramType1 , paramType2 , paramType3 ) = 0;
@@ -139,4 +139,19 @@ public:									\
 	{								\
 		return factory< productType >( p1,p2,p3,p4,p5,p6,p7,p8,p9,p10 ); \
 	}
+	
+	/**
+	 * @brief 使用模板实现的抽象工厂模式
+	 */
+	template< typename... productTypes >
+	struct abstractFactory
+	{
+		using prdtTypes = std::tuple< productTypes... >;
+	
+		template< size_t N , typename...Args >
+		auto create( Args&&... args ) -> typename std::tuple_element< N , prdtTypes >::type *{
+			return factory< typename std::tuple_element< N , prdtTypes >::type >( std::forward<Args>(args)...);
+		}
+	};
+	
 }}
