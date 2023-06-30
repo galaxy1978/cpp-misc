@@ -75,10 +75,6 @@ public:
 };
 
 a * pa = a::factory( 23 );
-//包含有错误通知回调的工厂
-a * pa2 = a::factory( []( Factory::emErrCode err){
-            // 错误处理
-} , 23 );
 ```
 - 责任链模式
  使用示例：
