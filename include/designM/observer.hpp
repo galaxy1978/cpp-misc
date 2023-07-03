@@ -1,10 +1,13 @@
+/**
+ * @brief 这是一个观察者模式框架模块。
+ */
 #include <iostream>
 #include <vector>
 #include <algorithm>
 #include <functional>
 #include <tuple>
 
-#include "designM/variant.hpp"
+#include "container/variant.hpp"
 
 namespace wheels
 {
@@ -19,6 +22,25 @@ namespace wheels
 			// 内部使用
 			virtual bool needRelease(){ return false; }
 		};
+
+		/**
+		 * @brief 抽取tuple数据内容构造参数表的vector
+		 */
+		template< int N , typename tupleType >
+		struct FOR__{
+			static void extract( std::vector< wheels::variant >& param , const tupleType& t ){
+				param[ N ] = wheels::variant::make( std::get< N - 1 >( t ) );
+				FOR__< N - 1 , tupleType >::extract( param , t );
+			}
+		};
+
+		template< typename tupleType >
+		struct FOR__<0, tupleType >{
+			static void extract( std::vector< wheels::variant >& param  , const tupleType& t ){
+				param[ 0 ] = wheels::variant::make(std::get< 0 >( t ) );
+			}
+		};
+		
 		/**
 		 * @brief 数据改变的模块
 		 */
@@ -26,25 +48,9 @@ namespace wheels
 		public:
 			using obsvFunc_t = std::function< void ( const std::vector<wheels::variant>& ) >;
 		protected:
-			/**
-			 * @brief 抽取tuple数据内容构造参数表的vector
-			 */
-			template< int N >
-			struct FOR__{
-				static void extract( std::vector< wheels::variant >& param , const std::tuple<>& t ){
-					param[ N ] = wheels::variant::make( std::get< N >( t ) );
-					FOR__< N - 1 >::extract( param , t );
-				}
-			};
+			
 
-			template<>
-			struct FOR__<0>{
-				static void extract( std::vector< wheels::variant > param , const std::tuple<>& t ){
-					param[ 0 ] = wheels::variant::make( std::get< 0 >( t ) );
-				}
-			};
-
-			class observer__ : public observer__{
+			class observer__ : public observer{
 			private:
 				obsvFunc_t  m_func__;
 			public:
@@ -113,16 +119,23 @@ namespace wheels
 			 * @brief 执行通知操作
 			 */
 			template< typename ...Args >
-			void notifyObservers( Args&... args) {
+			void notifyObservers( Args&&... args) {
 				// 构造variant数组
-				std::tuple<> t = std::make_tuple(args...);
-				std::vector< wheels::variant >   param( sizeof...( args ) );
-				// 从tuple抽取参数构造成 std::vector< wheels::variant >
-				FOR__< sizeof...(args) >::extract( param, t );
-				std::lock_guard< std::mutex > lck( m_mutex__ );
-				for (auto obsv : m_observers__) {
-					
-					obsv->update( param );
+				if( sizeof...( args ) > 0 ){
+					std::tuple<> t = std::make_tuple( std::forward( args... ) );
+					std::vector< wheels::variant >   param( sizeof...( args ) );
+					// 从tuple抽取参数构造成 std::vector< wheels::variant >
+					FOR__< sizeof...(args) , decltype(t) >::extract( param, t );
+					std::lock_guard< std::mutex > lck( m_mutex__ );
+					for (auto obsv : m_observers__) {
+						obsv->update( param );
+					}
+				}else{
+					std::vector< wheels::variant > param;
+					std::lock_guard< std::mutex > lck( m_mutex__ );
+					for (auto obsv : m_observers__) {
+						obsv->update( param );
+					}
 				}
 			}
 
