@@ -1,5 +1,6 @@
 # cppMisc
 #### changelog
+-  2023-7-4  新增了建造者模式，还没有测试
 -  2023-6-30 新增了抽象工厂模式 include/designM/absFactory.hpp，示例在example目录下
 -  2023-6-26 新增了线程池 include/threadPool.hpp
 -  2023-5-28 新增红黑树
