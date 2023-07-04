@@ -1,26 +1,38 @@
-namespace wheels{ namespace dm {
-template< typename... Parts > class product{};
+/**
+ * @brief 建造者模式
+ * @version 1.0
+ * @author 宋炜
+ * @date 2023-7-4
+*/
 
-template< typename Part1 , typename... Parts > 
-class product<Part1, Parts...> : public Part1 , public product< Parts... >
+#pragma once
+namespace wheels{ namespace dm {
+
+template< typename itfcType , typename... Parts > class product{};
+
+template< typename itfcType , typename Part1 , typename... Parts > 
+class product<itfcType , Part1 , Parts... > : public Part1 , public product< itfcType , Parts... >
 {
 public:
 	virtual ~product(){}
 };
 
 
-
-template<> class product<>{};
+template< typename itfcType > 
+class product<itfcType>: public itfcType{
+public:
+	virtual ~product(){}
+};
 
 /**
  * @brief 
  * @tparam Parts ，组件表
 */
-template< typename... Parts >
+template< typename itfcType , typename... Parts >
 class director 
 {
 public:
-	using product_t = product< Parts... >;
+	using product_t = product< itfcType , Parts... >;
 
 public:
 	template< typename... Params >
