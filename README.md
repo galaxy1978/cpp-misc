@@ -1,5 +1,6 @@
 # cppMisc
 #### changelog
+-  2023-7-14 新增了适配器模式 include/designM/adaptor.hpp
 -  2023-7-7  新增了外观模式，include/designM/facade.hpp"分别以接口和继承的两种方式实现 , 示例在example目录下
 -  2023-7-4  新增了建造者模式，include/designM/build.hpp , 示例在example目录下
 -  2023-6-30 新增了抽象工厂模式 include/designM/absFactory.hpp，示例在example目录下
