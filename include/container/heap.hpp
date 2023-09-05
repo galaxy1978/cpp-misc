@@ -20,8 +20,6 @@ private:
 	};
 private:
 	std::vector<Node> m_data__;
-	Compare cmp__;
-
 public:
 	using key_type = typename std::remove_pointer< typename std::decay< Key >::type >::type;
 	using value_type = typename std::remove_pointer< typename std::decay< Value >::type >::type;
