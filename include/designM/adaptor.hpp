@@ -3,6 +3,7 @@
  * @version 1.0
  * @author 宋炜
  * @date 2023-7-12
+ *  2023-10-5  增加了可变参数的支持
  */
 
 #pragma once
@@ -12,10 +13,12 @@ namespace wheels
 
 template< int N , typename adapterType , typename tplType >
 struct CALLER_HELPER__{
-	static void call( adapterType * adpter , tplType& t  ){
+	
+	template< typename ...Params >
+	static void call( adapterType * adpter , tplType& t , Params&& ...args ){
 		if( adpter && adpter->m_callback__ ){
-			adpter->m_callback__( &std::get< N - 1 >( t ) );
-			CALLER_HELPER__< N - 1 , adapterType , tplType>::call( adpter , t );
+			adpter->m_callback__( &std::get< N - 1 >( t ) , std::forward<Params>(args)...);
+			CALLER_HELPER__< N - 1 , adapterType , tplType>::call( adpter , t , std::forward<Params>(args)... );
 		}
 	}
 };
@@ -23,7 +26,8 @@ struct CALLER_HELPER__{
 template< typename adapterType , typename tplType  >
 struct CALLER_HELPER__< 0 ,  adapterType , tplType>{
 	
-	static void call( adapterType * adpter , tplType& t ){
+	template< typename ...Params >
+	static void call( adapterType * adpter , tplType& t, Params&& ...args ){
 		(void)adpter;
 		(void)t;
 	}
@@ -41,22 +45,26 @@ struct TYPE_CHK_HELPER__< itfcType , implType1 , implType...> //: public TYPE_CH
 template< typename itfcType >
 struct TYPE_CHK_HELPER__<itfcType> {};
 
+
 // 适配器类
-template <typename itfcType , typename... T>
+template <typename functor , typename itfcType , typename ...T>
 class Adapter {
 public:
     Adapter(const T&... adap) : m_adaptees__(adap...) {}
 	
-	void set( std::function< void ( itfcType* ) > fun ){ m_callback__ = fun; }
+	template< typename ...Params >
+	void set( functor fun ){ m_callback__ = fun; }
 	
-    void request() {
-        CALLER_HELPER__< sizeof...(T) , Adapter<itfcType , T...> , std::tuple<T...> >::call( this , m_adaptees__ );
+	template< typename ...Params >
+    void request( Params&& ...params ) {
+        CALLER_HELPER__< sizeof...(T) , Adapter<functor , itfcType , T...> , std::tuple<T...> >::
+		   call( this , m_adaptees__ ,  params... );
     }
 	
-	std::function< void ( itfcType* ) >  m_callback__;
+	functor  m_callback__;
 protected:
     std::tuple<T...>    m_adaptees__;
 	
-	TYPE_CHK_HELPER__<itfcType , T...>   m_chk_helper__[0];
+	TYPE_CHK_HELPER__<itfcType , T...>   m_chk_helper__;
 };
 }}
