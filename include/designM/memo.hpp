@@ -4,6 +4,8 @@
  * @author 宋炜
  */
 
+#pragma once
+
 #include <type_traits>
 #include <vector>
 
