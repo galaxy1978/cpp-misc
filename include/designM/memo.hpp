@@ -1,5 +1,7 @@
 /**
  * @brief 备忘录模式
+ * @version 1.0
+ * @author 宋炜
  */
 
 #include <type_traits>
