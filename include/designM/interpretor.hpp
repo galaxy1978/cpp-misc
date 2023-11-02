@@ -11,11 +11,11 @@
 #include <future>
 
 namespace wheels{namespace dm{
-tempalte< typename RET , typename ...PARAMS >
+template< typename RET , typename ...PARAMS >
 struct itptorItfc
 {
-	virtual RET execString(const std::string& str, PARAMS&& ...args) = 0; 
-	virtual RET execFile(const std::string& file, PARAMS&& ...args) = 0; 
+    virtual RET execString(const std::string& str, PARAMS&& ...args) = 0;
+    virtual RET execFile(const std::string& file, PARAMS&& ...args) = 0;
 };
 // 实际解释器可以使用外部的脚本语言，比如lua，js和python等等
 template < typename ITFC_TYPE , typename IMPL_TYPE , typename RET , typename ...PARAMS>
@@ -34,7 +34,7 @@ protected:
 public:
 	virtual ~iterpretor(){}
 	
-	tempalte< typename ...Params >
+    template< typename ...Params >
 	static std::shared_ptr< iterpretor<itfc_t , impl_t , RET , PARAMS...> > 
 	make_shared( Params&& ...args ){
 		auto ret = std::make_shared<iterpretor< itfc_t , impl_t , RET , PARAMS...> >();
@@ -42,8 +42,8 @@ public:
 		return ret;
 	}
 	
-	std::future< RET > execString( const std::string& str , bool async , PARAMS&& ...args ){
-		std::packaged_task< RET (PARAMS...) > task( [=]->RET{
+    std::future< RET > execString( const std::string& str , bool async , PARAMS&& ...args ){
+        std::packaged_task< RET (PARAMS...) > task( [=]()->RET{
 			return pt_impl__->execString( str , std::forward<PARAMS>(args)...);
 		} );
 		auto ret = task.get_future();
@@ -59,8 +59,8 @@ public:
 	}
 	
 
-	std::future< RET > execFile( const std::string& file , bool async , PARAMS&& ...args ){
-		std::packaged_task< RET (PARAMS...) > task( [=]->RET{
+    std::future< RET > execFile( const std::string& file , bool async , PARAMS&& ...args ){
+        std::packaged_task< RET (PARAMS...) > task( [=]()->RET{
 			return pt_impl__->execFile( file , std::forward<PARAMS>(args)...);
 		} );
 		auto ret = task.get_future();
