@@ -1,7 +1,8 @@
 /**
  * @brief 代理模式
- * @version 1.0
+ * @version 1.1
  * @author 宋炜
+ *  新增多接口定义宏，方便定义复杂结构的代理接口
 */
 
 #pragma once
