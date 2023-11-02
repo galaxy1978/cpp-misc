@@ -10,6 +10,8 @@
 #include <type_traits>
 #include <functional>
 #include <vector>
+#include <stdexcept>
+#include <memory>
 
 namespace wheels
 {
@@ -19,20 +21,28 @@ namespace dm{
 	{
 	public:
 		using type_t = typename std::remove_pointer<typename std::decay< ITFC_TYPE >::type >::type;
-		using composite_t = composite_t< type_t >;
+        using composite_t = composite< type_t >;
 		using children_t = std::vector< std::shared_ptr< composite< type_t > > >;
 	public:
 		composite( ): p_obj__( nullptr ){}
 		composite( std::shared_ptr< type_t > p ): p_obj__( p ){}
 		virtual ~composite(){}
-
+		/**
+		 * @brief 判断是否是叶子节点
+		 */
 		bool isLeaf(){ return m_children__.size() > 0; }
-
+		/**
+		 * @brief 添加子节点
+		 */
 		void add( std::shared_ptr< composite_t> child ){
+			if( !child ) return;
 			m_children__.push_heap( child );
 		}
 
-		void remove( composite_t * child ){
+		void remove( std::shared_ptr< composite_t> child ){
+			if( !child ){
+				return;
+			}
 			auto it = std::find( m_children__.begin() , m_children__.end() , child );
 
 			if( it != m_children__.end() ){
@@ -47,11 +57,11 @@ namespace dm{
 		}
 
 		type_t * operator->(){
-			if( !p_obj ) throw std::runtime_error( "对象内容无效" );
+            if( !p_obj__ ) throw std::runtime_error( "对象内容无效" );
 			return p_obj__.get();
 		}
 		type_t& operator*(){
-			if( !p_obj ) throw std::runtime_error( "对象内容无效" );
+            if( !p_obj__ ) throw std::runtime_error( "对象内容无效" );
 			return * p_obj__;
 		}
 	private:
