@@ -4,10 +4,10 @@
  * @author 宋炜
  */
 
-#pragma once
-
 #include <type_traits>
 #include <vector>
+
+#pragma once
 
 namespace wheels
 {
@@ -20,10 +20,10 @@ namespace wheels
 				static_assert( std::is_copy_constructible< T >::value , "必须支持拷贝构造" );
 				static_assert( std::is_copy_assignable< T >::value , "必须支持赋值拷贝操作" );
 			public:
-				Memento(const T& state) : m_state__(state) {}
+                memento(const T& state) : m_state__(state) {}
 
 				T getState() const {
-					return state;
+                    return m_state__;
 				}
 
 				T * operator->(){ return &m_state__;}
@@ -36,26 +36,26 @@ namespace wheels
 			class originator {
 			public:
 				void setState(const T& state) {
-					this->state = state;
+                    m_state__ = state;
 				}
 
 				T getState() const {
-					return state;
+                    return m_state__;
 				}
 
-				Memento<T> createMemento() const {
-					return Memento<T>(state);
+                memento<T> createMemento() const {
+                    return memento<T>(m_state__);
 				}
 
-				void restoreMemento(const Memento<T>& memento) {
-					this->state = memento.getState();
+                void restoreMemento(const memento<T>& memento) {
+                    m_state__ = memento.getState();
 				}
 
 				T * operator->(){ return &m_state__;}
 				T& operator*(){ return m_state__; }
 
 			private:
-				T state;
+                T m_state__;
 			};
 		}
 
@@ -93,5 +93,4 @@ namespace wheels
 		};
 
 	}
-
 }
