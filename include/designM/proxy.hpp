@@ -2,12 +2,14 @@
  * @brief 代理模式
  * @version 1.1
  * @author 宋炜
- *  新增多接口定义宏，方便定义复杂结构的代理接口
 */
 
 #pragma once
 #include <type_traits>
 #include <memory>
+#include <future>
+#include <thread>
+#include <functional>
 
 namespace private__
 {
@@ -18,7 +20,7 @@ namespace wheels{namespace dm {
 	template< typename RET , typename ...PARAMS >
 	struct proxyItfc : public private__::itfcBase
 	{
-		virtual RET agent( PARAM&& ...args ) = 0;
+        virtual RET agent( PARAMS&& ...args ) = 0;
 	};
 
 	#define DECLARE_PROXY_ITFC( name )    \
@@ -48,6 +50,7 @@ namespace wheels{namespace dm {
 		static_assert( std::is_base_of<itfc_t , private__::itfcBase >::value , "" );
 	protected:
 		std::shared_ptr< concrete_t > pt_cncrt__;
+
 	protected:
 		std::shared_ptr< concrete_t > get__(){ 
 			std::weak_ptr ret( pt_cncrt__ );
@@ -78,6 +81,27 @@ namespace wheels{namespace dm {
 			
 			return ret;
 		}		
+		/**
+		 * @brief 代理函数，将实际代理处理放在回调函数中进行。并使用异步执行的方式运行
+		 * @tparam RET，函数对象的返回值
+		 * @tparam PARAMS，可变的回调函数对象
+		 * @param cb, 实际的代理处理函数对象，这个函数对象的参数也是可变的
+		 * @return 返回std::future对象
+		*/
+		template< typename RET , typename ...PARAMS >
+        std::future< RET > agentCall
+            (
+                std::function< RET (std::shared_ptr< concrete_t > , PARAMS&&... ) > cb ,
+                PARAMS&& ...args
+            )
+        {
+			std::packaged_task< RET ( PARAMS&&... ) > fun( cb );
+            auto ret = fun.get_future();
+
+            std::thread thd( std::move( fun ) , get__() , std::forward<PARAMS>(args)... );
+			thd.detach();
+			return ret;
+		}
 	};
 }}
 
