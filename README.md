@@ -1,5 +1,6 @@
 # cppMisc
 #### changelog
+-  2023-11-2 新增了备忘录模式，组合模式和代理模式
 -  2023-7-15 新增了INI文𢓐处理模块
 -  2023-7-14 新增了适配器模式 include/designM/adaptor.hpp
 -  2023-7-7  新增了外观模式，include/designM/facade.hpp"分别以接口和继承的两种方式实现 , 示例在example目录下
