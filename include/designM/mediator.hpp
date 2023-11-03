@@ -46,9 +46,15 @@ namespace wheels { namespace dm {
         std::shared_ptr< mediator_t >    pt_mediator__;
     public:
         // 发送消息接口，消息内容和数量是可以根据实际使用情况进行变化的
-        virtual void send( PARAMS&& ... ){ };
-        virtual void send( std::shared_ptr< colleagueItfc >  , PARAMS&& ... ){};
-        virtual void send( std::vector< std::shared_ptr< colleagueItfc > >  , PARAMS&& ... ){};
+        virtual void send( PARAMS&& ...args){
+            pt_mediator__->dispatch( std::forward<PARAMS>(args)...);
+        }
+        virtual void send( std::shared_ptr< colleagueItfc > to , PARAMS&& ...args ){
+            pt_mediator__->dispatchTo( to , std::forward<PARAMS>(args)...);
+        };
+        virtual void send( std::vector< std::shared_ptr< colleagueItfc > > dests , PARAMS&& ...args ){
+            pt_mediator__->dispatchTo( dests , std::forward<PARAMS>(args)...);
+        };
         // 接收处理接口
         virtual void recv( const std::tuple<PARAMS...>& tpl  ) = 0;
     };
@@ -61,9 +67,15 @@ namespace wheels { namespace dm {
 	protected:
 		 std::shared_ptr< mediator_t >    pt_mediator__;
     public:
-         virtual void send( PARAMS&& ... ){ };
-        virtual void send( std::shared_ptr< colleagueItfc >  , PARAMS&& ... ){};
-        virtual void send( std::vector< std::shared_ptr< colleagueItfc > >  , PARAMS&& ... ){};
+         virtual void send( PARAMS&& ... args){
+             pt_mediator__->dispatch( std::forward<PARAMS>(args)...);
+         }
+         virtual void send( std::shared_ptr< colleagueItfc > to , PARAMS&& ...args ){
+             pt_mediator__->dispatchTo( to , std::forward<PARAMS>(args)...);
+         };
+         virtual void send( std::vector< std::shared_ptr< colleagueItfc > > dests , PARAMS&& ...args ){
+             pt_mediator__->dispatchTo( dests , std::forward<PARAMS>(args)...);
+         };
 
         virtual void recv( PARAMS&& ...args ) = 0;
     };
