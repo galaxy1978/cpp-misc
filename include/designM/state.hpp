@@ -175,6 +175,8 @@ public:
         if( it != m_arcs__.end() ){
             call_leave__( it->m_second[0], std::is_arithmetic<CONDITION_DATA_TYPE>::value ? CONDITION_DATA_TYPE() : (CONDITION_DATA_TYPE)0.0 );
             call_ent__( it->m_second[0] , std::is_arithmetic<CONDITION_DATA_TYPE>::value ? CONDITION_DATA_TYPE() : (CONDITION_DATA_TYPE)0.0 );
+
+            m_current__ = it->m_second[ 0 ];
         }else{
             return false;
         }
@@ -204,6 +206,8 @@ public:
                                              private__::emEvent::EVT_END ,
                                              std::is_arithmetic<CONDITION_DATA_TYPE>::value?CONDITION_DATA_TYPE():(CONDITION_DATA_TYPE)0.0 );
                     }
+
+                    m_current__ = item.m_to;
 					break;
 				}
 			}
