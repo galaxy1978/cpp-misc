@@ -20,7 +20,8 @@ namespace private__
 	{
 		EVT_ENT,
 		EVT_LEAVE,
-		EVT_RAISE
+        EVT_READY,
+        EVT_END
 	};
 	template< typename STATE_TYPE >
 	struct stStat
@@ -116,10 +117,26 @@ public:
 		}
 	}
 
+    void setEnd( const stateData_t& data ){
+        m_end__ = data;
+        if( m_is_running__ == false ){
+            m_current__ = data;
+        }
+    }
+
 	void start( bool sw ){
 		if( m_is_running__ == sw ){
 			return;
-		}	
+        }
+
+        m_is_running__ = sw;
+        if( sw ){
+            m_current__ = m_start__;
+            pt_producer__->send( pt_consumer__ ,
+                                m_end__ ,
+                                private__::emEvent::EVT_READY ,
+                                std::is_arithmetic<CONDITION_DATA_TYPE>::value?CONDITION_DATA_TYPE():(CONDITION_DATA_TYPE)0.0 );
+        }
 	}
 
     bool execute(){
@@ -147,6 +164,13 @@ public:
 					find_dst = true;
 					call_leave__( item.m_from , data );
 					call_ent__( item.m_to , data );
+
+                    if( item.m_to == m_end__ ){
+                        pt_producer__->send( pt_consumer__ ,
+                                             m_end__ ,
+                                             private__::emEvent::EVT_END ,
+                                             std::is_arithmetic<CONDITION_DATA_TYPE>::value?CONDITION_DATA_TYPE():(CONDITION_DATA_TYPE)0.0 );
+                    }
 					break;
 				}
 			}
