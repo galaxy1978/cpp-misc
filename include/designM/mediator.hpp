@@ -11,9 +11,11 @@
 #include <algorithm>
 #include <vector>
 
-#define MEDIATOR_USE_TUPLE (1)
+#if !defined( MEDIATOR_USE_TUPLE )
+#	define MEDIATOR_USE_TUPLE (1)
+#endif
 
-#if defined( MEDIATOR_USE_TUPLE )
+#if MEDIATOR_USE_TUPLE == 1
 #	include <tuple>
 #   include <thread>
 #	include <condition_variable>
@@ -34,7 +36,7 @@ namespace wheels { namespace dm {
 // 传递。当使用异步方式进行中介处理的时候接收处理的参数实际被封包成std::tuple。
 // 因为异步传递的时候数据内容需要进行排队，这要求能够有容器临时存储数据内容。考虑到模块的通用性和
 // 对消息结构的复杂性，所以使用std::tuple的方式。
-#if defined( MEDIATOR_USE_TUPLE )
+#if MEDIATOR_USE_TUPLE
 
     template< typename MEDIATOR , typename ...PARAMS >
     struct colleagueItfc : public private__::colleagueBase
@@ -87,7 +89,7 @@ namespace wheels { namespace dm {
     public:
         using itfc_t = typename std::remove_pointer< typename std::decay<ITFC_TYPE>::type >::type;
         using data_t = std::unordered_set< std::shared_ptr< itfc_t > >;
-#if defined( MEDIATOR_USE_TUPLE )
+#if MEDIATOR_USE_TUPLE
         using tuple_t = typename itfc_t::tuple_t;
         /// 定义消息结构，消息结构中包含了接收者和消息数据内容
         struct stMsgs{
@@ -100,7 +102,7 @@ namespace wheels { namespace dm {
     protected:
         data_t                    m_colleague__;    // 同事表
 
-#if defined( MEDIATOR_USE_TUPLE )
+#if  MEDIATOR_USE_TUPLE 
         std::queue< stMsgs >      m_msgs__;         // 消息队列
         std::condition_variable   m_cnd_var__;      // 采用异步处理需要考虑线程安全性
         std::atomic< bool >       m_is_running__;   // 线程运行标记
@@ -122,7 +124,7 @@ namespace wheels { namespace dm {
                     m_cnd_var__.wait( lck );
                 }
             }
-		}
+	}
 #endif
     public:
         mediator(){}
@@ -132,7 +134,7 @@ namespace wheels { namespace dm {
          * @param colleague[ I ]， 参与者对象指针
          */
         void add( std::shared_ptr< itfc_t > colleague) {
-#if defined( MEDIATOR_USE_TUPLE )
+#if MEDIATOR_USE_TUPLE 
             std::unique_lock< std::mutex >  lck( m_mutex__ );
 #endif
             m_colleague__.insert(colleague);
@@ -142,7 +144,7 @@ namespace wheels { namespace dm {
          * @param colleague[ I ]， 参与者对象指针
          */
         void erase( std::shared_ptr< itfc_t > colleague) {
-#if defined( MEDIATOR_USE_TUPLE )
+#if MEDIATOR_USE_TUPLE 
             std::unique_lock< std::mutex >  lck( m_mutex__ );
 #endif
             auto it = std::find( m_colleague__.begin() , m_colleague__.end() , colleague );
@@ -151,7 +153,7 @@ namespace wheels { namespace dm {
             }
         }
 
-#if defined( MEDIATOR_USE_TUPLE )
+#if  MEDIATOR_USE_TUPLE 
         /**
          * @brief 启动线程或者关闭线程
          * @param sw[ I ]
