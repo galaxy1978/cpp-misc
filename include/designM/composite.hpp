@@ -23,6 +23,7 @@ namespace dm{
 		using type_t = typename std::remove_pointer<typename std::decay< ITFC_TYPE >::type >::type;
         using composite_t = composite< type_t >;
 		using children_t = std::vector< std::shared_ptr< composite< type_t > > >;
+		using iterator = children_t::iterator;
 	public:
 		composite( ): p_obj__( nullptr ){}
 		composite( std::shared_ptr< type_t > p ): p_obj__( p ){}
@@ -52,19 +53,15 @@ namespace dm{
 		
 		void for_each( std::function< void ( composite_t * item ) > fun ){
 			for( auto item : m_children__ ){
-				fun( item.get() );
+				bool rst = fun( item.get() );
+				if( !rst ) break;
 			}
 		}
-
-		type_t * operator->(){
-            if( !p_obj__ ) throw std::runtime_error( "对象内容无效" );
-			return p_obj__.get();
-		}
-		type_t& operator*(){
-            if( !p_obj__ ) throw std::runtime_error( "对象内容无效" );
-			return * p_obj__;
-		}
-	private:
+		
+		type_t * get(){ return p_obj__.get(); }
+		
+		
+	protected:
 		children_t   m_children__;
 
 		std::shared_ptr< type_t >     p_obj__;
