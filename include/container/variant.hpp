@@ -1,8 +1,8 @@
 /**
  * @brief 任意类型数据的容器
- * @version 1.0
+ * @version 1.1
  * @author 宋炜
- * @date 2023-5-8
+ * @date 2023-5-8 ~ 2023-11-17
  */
 #pragma once
 
@@ -39,17 +39,19 @@ namespace wheels
 		// *********************************************************************************************************************
 		template< typename T >
 		class variant__ : public variant_base__{
+		public:
+			using data_t = typename std::remove_pointer< typename std::decay<T>::type >::type;
 		private:
-			T    __m_data;    // 实际数据内容
+			T    m_data__;    // 实际数据内容
 		public:
 			variant__(){}
-			variant__( const T& value ) : __m_data(value){}
+			variant__( const T& value ) : m_data__(value){}
 			virtual ~variant__(){}
 			
-			T get(){ return __m_data; }
+			T get(){ return m_data__; }
 
 			void set( const T& b ){
-				__m_data = b;
+				m_data__ = b;
 			}
 			/**
 			 * @brief 拷贝操作。主要用于外部的拷贝构造、赋值拷贝。
@@ -60,7 +62,7 @@ namespace wheels
 				
 				try{
 					ret = new variant__< T >();
-                    ret->__m_data = std::move( __m_data );
+                    ret->m_data__ = std::move( m_data__ );
 				}catch( std::bad_alloc& e ){
 					ret = nullptr;
 				}
@@ -190,7 +192,7 @@ namespace wheels
 		template< typename dataType >
 		bool is(){
 		      return (__m_typeinfo == typeid( dataType ).name() );
-	        }
+	    }
 		
 		/**
 		 * @brief 指定数据
@@ -208,7 +210,5 @@ namespace wheels
 				throw std::runtime_error( "数据内存错误" );
 			}
 		}
-
-				
 	};
 }
