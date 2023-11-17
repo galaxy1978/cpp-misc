@@ -24,13 +24,11 @@
 namespace wheels
 {
 	/// 这个名字空间中的内容是底层实现部分。
-	namespace __private{
-		// 基础接口定义，这一部分在暴露接口类中作为指针保存
-		// 但是基本接口提供的内容可以访问相关的内存
-		class __variant_base{
+	namespace private__{
+		class variant_base__{
 		public:
-			virtual ~__variant_base(){}
-			virtual __variant_base * clone() = 0;
+			virtual ~variant_base__(){}
+			virtual variant_base__ * clone() = 0;
 			// 如果需要检查操作的时候需要检查数据，则在编译的时候要定义宏
 			// 并将宏的值配置成1
 #if VARIANT_USE_TYPE_CHECK
@@ -39,18 +37,16 @@ namespace wheels
 		};
 
 		// *********************************************************************************************************************
-		// 实际数据保存的类，这个采用模板实现保证能够适应任何的数据类型。因为采用模板实现的类不能保存在其他的容器中
-		// 所以从__variant_base继承，在暴露的部分已基类指针保存内容。
 		template< typename T >
-		class __variant : public __variant_base{
+		class variant__ : public variant_base__{
 		private:
 			T    __m_data;    // 实际数据内容
 		public:
-			__variant(){}
-			__variant( const T& value ) : __m_data(value){}
-			virtual ~__variant(){}
+			variant__(){}
+			variant__( const T& value ) : __m_data(value){}
+			virtual ~variant__(){}
 			
-			const T& get(){ return __m_data; }
+			T get(){ return __m_data; }
 
 			void set( const T& b ){
 				__m_data = b;
@@ -59,12 +55,12 @@ namespace wheels
 			 * @brief 拷贝操作。主要用于外部的拷贝构造、赋值拷贝。
 			 * @return 成功操作返回
 			 */
-			virtual __variant_base *clone() final{
-				__variant< T > * ret = nullptr;
+			virtual variant_base__ *clone() final{
+				variant__< T > * ret = nullptr;
 				
 				try{
-					ret = new __variant< T >();
-					ret->__m_data = __m_data;
+					ret = new variant__< T >();
+                    ret->__m_data = std::move( __m_data );
 				}catch( std::bad_alloc& e ){
 					ret = nullptr;
 				}
@@ -83,7 +79,7 @@ namespace wheels
 	class variant{
             
 	private:
-		__private::__variant_base    * __p_data;
+		private__::variant_base__    * __p_data;
 #if VARIANT_USE_TYPE_CHECK
 		std::string                    __m_typeinfo;    // 保存数据类型描述
 #endif
@@ -165,25 +161,25 @@ namespace wheels
 #if VARIANT_USE_TYPE_CHECK
 			ret.__m_typeinfo = typeid( dataType ).name();
 #endif			
-			ret.__p_data = new __private::__variant< dataType >( data );
+			ret.__p_data = new private__::variant__< dataType >( data );
 			return ret ;
 		}
 
 		template<typename dataType >
-		const dataType& get( )const{
+		dataType get( )const{
 			std::lock_guard< std::mutex > lock( __m_mutex );
 #if VARIANT_USE_TYPE_CHECK
 			assert( __m_typeinfo == typeid( dataType ).name() );
 #endif
-			__private::__variant<dataType>  * p = static_cast< __private::__variant<dataType> *>( __p_data );
+			private__::variant__<dataType>  * p = static_cast< private__::variant__<dataType> *>( __p_data );
 			if( !p ){
-				throw -1;
+				throw std::runtime_error( "data empty" );
 			}
 
 			return p->get();
 		}
 		/**
-		 * @brief 判断类型师傅相符合.
+		 * @brief 判断类型是否相符合.
 		 *   例如：
 		 *       if( is<int>() ){
 		 *            do something
@@ -205,616 +201,14 @@ namespace wheels
 #if VARIANT_USE_TYPE_CHECK
 			assert( __m_typeinfo == typeid( dataType ).name() );
 #endif
-			__private::__variant<dataType>  * p = static_cast< __private::__variant<dataType>* >( __p_data );
+			private__::variant__<dataType>  * p = static_cast< private__::variant__<dataType>* >( __p_data );
 			if( p ){
 				return p->set( data );
 			}else{
-				throw -2;
+				throw std::runtime_error( "数据内存错误" );
 			}
 		}
 
 				
 	};
-
-	bool operator==( const variant& a , bool b ){
-		bool ret = false;
-		bool a_ = a.get< bool >();
-		ret = ( a_ ==  b );
-		return ret;
-	}
-	bool operator==( const variant& a , char b ){
-		bool ret = false;
-		auto a_ = a.get< char >();
-		ret = ( a_ ==  b );
-		return ret;
-	}
-	bool operator==( const variant& a , short b ){
-		bool ret = false;
-		auto a_ = a.get< short >();
-		ret = ( a_ ==  b );
-		return ret;
-	}
-	bool operator==( const variant& a , int b ){
-		bool ret = false;
-		auto a_ = a.get< int >();
-		ret = ( a_ ==  b );
-		return ret;
-	}
-
-	bool operator==( const variant& a , int64_t b ){
-		bool ret = false;
-		auto a_ = a.get< int64_t >();
-		ret = ( a_ ==  b );
-		return ret;
-	}
-	
-	bool operator==( const variant& a , uint8_t b ){
-		bool ret = false;
-		auto a_ = a.get< uint8_t >();
-		ret = ( a_ ==  b );
-		return ret;
-	}
-	bool operator==( const variant& a , uint16_t b ){
-		bool ret = false;
-		auto a_ = a.get< uint16_t >();
-		ret = ( a_ ==  b );
-		return ret;
-	}
-
-	bool operator==( const variant& a , uint32_t b ){
-		bool ret = false;
-		auto a_ = a.get< uint32_t >();
-		ret = ( a_ ==  b );
-		return ret;
-	}
-
-	bool operator==( const variant& a , uint64_t b ){
-		bool ret = false;
-		auto a_ = a.get< uint64_t >();
-		ret = ( a_ ==  b );
-		return ret;
-	}
-
-	bool operator==( bool b , const variant& a  ){
-		bool ret = false;
-		auto a_ = a.get< bool >();
-		ret = ( a_ ==  b );
-		return ret;
-	}
-
-	bool operator==( char b , const variant& a  ){
-		bool ret = false;
-		auto a_ = a.get< char >();
-		ret = ( a_ ==  b );
-		return ret;
-	}
-	bool operator==( short b , const variant& a  ){
-		bool ret = false;
-		auto a_ = a.get< short >();
-		ret = ( a_ ==  b );
-
-		return ret;
-	}
-	bool operator==( int b , const variant& a  ){
-		bool ret = false;
-		auto a_ = a.get< int >();
-		ret = ( a_ ==  b );
-
-		return ret;
-	}
-	bool operator==( int64_t b , const variant& a  ){
-		bool ret = false;
-		auto a_ = a.get< int64_t >();
-		ret = ( a_ ==  b );
-
-		return ret;
-	}
-	bool operator==( uint8_t b , const variant& a  ){
-		bool ret = false;
-		auto a_ = a.get< uint8_t >();
-		ret = ( a_ ==  b );
-
-		return ret;
-	}
-	bool operator==( uint16_t b , const variant& a  ){
-		bool ret = false;
-		auto a_ = a.get< uint16_t >();
-		ret = ( a_ ==  b );
-
-		return ret;
-	}
-	bool operator==( uint32_t b , const variant& a  ){
-		bool ret = false;
-		auto a_ = a.get< uint32_t >();
-		ret = ( a_ ==  b );
-
-		return ret;
-	}
-	bool operator==( uint64_t b , const variant& a  ){
-		bool ret = false;
-		auto a_ = a.get< uint64_t >();
-		ret = ( a_ ==  b );
-
-		return ret;
-	}
-	bool operator > ( char b , const variant& a  ){
-		bool ret = false;
-		
-		auto a_ = a.get< char >();
-		ret = ( a_ > b );
-
-		return ret;
-	}
-	bool operator > ( const variant& a , char b ){
-		bool ret = false;
-
-		auto a_ = a.get< char >();
-		ret = ( a_ > b );
-		
-		return ret;
-	}
-	bool operator > ( short b , const variant& a  ){
-		bool ret = false;
-
-		auto a_ = a.get< short >();
-		ret = ( a_ > b );
-		
-		return ret;
-	}
-	bool operator > ( const variant& a , short b ){
-		bool ret = false;
-
-		auto a_ = a.get< short >();
-		ret = ( a_ > b );
-		
-		return ret;
-	}
-	bool operator > ( int b , const variant& a  ){
-		bool ret = false;
-
-		auto a_ = a.get< int >();
-		ret = ( a_ > b );
-		
-		return ret;
-	}
-	bool operator > ( const variant& a , int b ){
-		bool ret = false;
-
-		auto a_ = a.get< int >();
-		ret = ( a_ > b );
-
-		return ret;
-	}
-	bool operator > ( int64_t b , const variant& a  ){
-		bool ret = false;
-
-		auto a_ = a.get< int64_t >();
-		ret = ( a_ > b );
-		
-		return ret;
-	}
-	bool operator > ( const variant& a , int64_t b ){
-		bool ret = false;
-
-		auto a_ = a.get< int64_t >();
-		ret = ( a_ > b );
-		
-		return ret;
-	}
-	bool operator > ( uint8_t b , const variant& a  ){
-		bool ret = false;
-
-		auto a_ = a.get< uint8_t >();
-		ret = ( a_ > b );
-		
-		return ret;
-	}
-	bool operator > ( const variant& a , uint8_t b ){
-		bool ret = false;
-
-		auto a_ = a.get< uint8_t >();
-		ret = ( a_ > b );
-
-		return ret;
-	}
-	bool operator > ( uint16_t b , const variant& a  ){
-		bool ret = false;
-		auto a_ = a.get< uint16_t >();
-		ret = ( a_ > b );
-		
-		return ret;
-	}
-	bool operator > ( const variant& a , uint16_t b ){
-		bool ret = false;
-
-		auto a_ = a.get< uint16_t >();
-		ret = ( a_ > b );
-		
-		return ret;
-	}
-	bool operator > ( uint32_t b , const variant& a  ){
-		bool ret = false;
-
-		auto a_ = a.get< uint32_t >();
-		ret = ( a_ > b );
-		return ret;
-	}
-	bool operator > ( const variant& a , uint32_t b ){
-		bool ret = false;
-
-		auto a_ = a.get< uint32_t >();
-		ret = ( a_ > b );
-		
-		return ret;
-	}
-	bool operator > ( uint64_t b , const variant& a  ){
-		bool ret = false;
-
-		auto a_ = a.get< uint64_t >();
-		ret = ( a_ > b );
-		
-		return ret;
-	}
-	bool operator > ( const variant& a , uint64_t b ){
-		bool ret = false;
-
-		auto a_ = a.get< uint64_t >();
-		ret = ( a_ > b );
-		
-		return ret;
-	}
-	bool operator > ( const std::string& b , const variant& a  ){
-		bool ret = false;
-
-		auto a_ = a.get< std::string >();
-		ret = ( a_ > b );
-		
-		return ret;
-	}
-	bool operator > ( const variant& a , const std::string& b ){
-		bool ret = false;
-
-		auto a_ = a.get< decltype(b) >();
-		ret = ( a_ > b );
-		
-		return ret;
-	}
-
-	bool operator < ( char b , const variant& a  ){
-		bool ret = false;
-
-		auto a_ = a.get< decltype(b) >();
-		ret = ( a_ < b );
-		
-		return ret;
-	}
-	bool operator < ( const variant& a , char b ){
-		bool ret = false;
-
-		auto a_ = a.get< decltype(b) >();
-		ret = ( a_ < b );
-		
-		return ret;
-	}
-	bool operator < ( short b , const variant& a  ){
-		bool ret = false;
-
-		auto a_ = a.get< decltype(b) >();
-		ret = ( a_ < b );
-		
-		return ret;
-	}
-	bool operator < ( const variant& a , short b ){
-		bool ret = false;
-
-		auto a_ = a.get< decltype(b) >();
-		ret = ( a_ < b );
-		
-		return ret;
-	}
-	bool operator < ( int b, const variant& a  ){
-		bool ret = false;
-		auto a_ = a.get< decltype(b) >();
-		ret = ( a_ < b );
-		return ret;
-	}
-	bool operator < ( const variant& a , int b ){
-		bool ret = false;
-		auto a_ = a.get< decltype(b) >();
-		ret = ( a_ < b );
-		return ret;
-	}
-	bool operator < ( int64_t b , const variant& a  ){
-		bool ret = false;
-		auto a_ = a.get< decltype(b) >();
-		ret = ( a_ < b );
-		return ret;
-	}
-	bool operator < ( const variant& a , int64_t b ){
-		bool ret = false;
-		auto a_ = a.get< decltype(b) >();
-		ret = ( a_ < b );
-		return ret;
-	}
-	bool operator < ( uint8_t b , const variant& a  ){
-		bool ret = false;
-		auto a_ = a.get< decltype(b) >();
-		ret = ( a_ < b );
-		return ret;
-	}
-	bool operator < ( const variant& a , uint8_t b ){
-		bool ret = false;
-		auto a_ = a.get< decltype(b) >();
-		ret = ( a_ < b );
-		return ret;
-	}
-	bool operator < ( uint16_t b , const variant& a  ){
-		bool ret = false;
-		auto a_ = a.get< decltype(b) >();
-		ret = ( a_ < b );
-		return ret;
-	}
-	bool operator < ( const variant& a , uint16_t b ){
-		bool ret = false;
-		auto a_ = a.get< decltype(b) >();
-		ret = ( a_ < b );
-		return ret;
-	}
-	bool operator < ( uint32_t b , const variant& a  ){
-		bool ret = false;
-		auto a_ = a.get< decltype(b) >();
-		ret = ( a_ < b );
-		return ret;
-	}
-	bool operator < ( const variant& a , uint32_t b ){
-		bool ret = false;
-		auto a_ = a.get< decltype(b) >();
-		ret = ( a_ < b );
-		return ret;
-	}
-	bool operator < ( uint64_t b , const variant& a  ){
-		bool ret = false;
-		auto a_ = a.get< decltype(b) >();
-		ret = ( a_ < b );
-		return ret;
-	}
-	bool operator < ( const variant& a , uint64_t b ){
-		bool ret = false;
-		auto a_ = a.get< decltype(b) >();
-		ret = ( a_ < b );
-		return ret;
-	}
-	bool operator < ( const std::string& b , const variant& a  ){
-		bool ret = false;
-		auto a_ = a.get< decltype(b) >();
-		ret = ( a_ < b );
-		return ret;
-	}
-	bool operator < ( const variant& a , const std::string& b ){
-		bool ret = false;
-		auto a_ = a.get< decltype(b) >();
-		ret = ( a_ < b );
-		return ret;
-	}
-
-	bool operator >= ( char b , const variant& a  ){
-		bool ret = false;
-
-		auto a_ = a.get< decltype(b) >();
-		ret = ( a_ >= b );
-		return ret;
-	}
-	bool operator >= ( const variant& a , char b ){
-		bool ret = false;
-
-		auto a_ = a.get< decltype(b) >();
-		ret = ( a_ >= b );
-		return ret;
-	}
-	bool operator >= ( short b , const variant& a  ){
-		bool ret = false;
-		auto a_ = a.get< decltype(b) >();
-		ret = ( a_ >= b );
-		return ret;
-	}
-	bool operator >= ( const variant& a , short b ){
-		bool ret = false;
-		auto a_ = a.get< decltype(b) >();
-		ret = ( a_ >= b );
-		return ret;
-	}
-	bool operator >= ( int b, const variant& a  ){
-		bool ret = false;
-		auto a_ = a.get< decltype(b) >();
-		ret = ( a_ >= b );
-		return ret;
-	}
-	bool operator >= ( const variant& a , int b ){
-		bool ret = false;
-		auto a_ = a.get< decltype(b) >();
-		ret = ( a_ >= b );
-		return ret;
-	}
-	bool operator >= ( int64_t b , const variant& a  ){
-		bool ret = false;
-		auto a_ = a.get< decltype(b) >();
-		ret = ( a_ >= b );
-		return ret;
-	}
-	bool operator >= ( const variant& a , int64_t b ){
-		bool ret = false;
-		auto a_ = a.get< decltype(b) >();
-		ret = ( a_ >= b );
-		return ret;
-	}
-	bool operator >= ( uint8_t b , const variant& a  ){
-		bool ret = false;
-		auto a_ = a.get< decltype(b) >();
-		ret = ( a_ >= b );
-		return ret;
-	}
-	bool operator >= ( const variant& a , uint8_t b ){
-		bool ret = false;
-		auto a_ = a.get< decltype(b) >();
-		ret = ( a_ >= b );
-		return ret;
-	}
-	bool operator >= ( uint16_t b , const variant& a  ){
-		bool ret = false;
-		auto a_ = a.get< decltype(b) >();
-		ret = ( a_ >= b );
-		return ret;
-	}
-	bool operator >= ( const variant& a , uint16_t b ){
-		bool ret = false;
-		auto a_ = a.get< decltype(b) >();
-		ret = ( a_ >= b );
-		return ret;
-	}
-	bool operator >= ( uint32_t b , const variant& a  ){
-		bool ret = false;
-		auto a_ = a.get< decltype(b) >();
-		ret = ( a_ >= b );
-		return ret;
-	}
-	bool operator >= ( const variant& a , uint32_t b ){
-		bool ret = false;
-		auto a_ = a.get< decltype(b) >();
-		ret = ( a_ >= b );
-		return ret;
-	}
-	bool operator >= ( uint64_t b , const variant& a  ){
-		bool ret = false;
-		auto a_ = a.get< decltype(b) >();
-		ret = ( a_ >= b );
-		return ret;
-	}
-	bool operator >= ( const variant& a , uint64_t b ){
-		bool ret = false;
-		auto a_ = a.get< decltype(b) >();
-		ret = ( a_ >= b );
-		return ret;
-	}
-	bool operator >= ( const std::string& b , const variant& a  ){
-		bool ret = false;
-		auto a_ = a.get< decltype(b) >();
-		ret = ( a_ >= b );
-		return ret;
-	}
-	bool operator >= ( const variant& a , const std::string& b ){
-		bool ret = false;
-		auto a_ = a.get< decltype(b) >();
-		ret = ( a_ >= b );
-		return ret;
-	}
-
-	bool operator <= ( char b , const variant& a  ){
-		bool ret = false;
-		auto a_ = a.get< decltype(b) >();
-		ret = ( a_ <= b );
-		return ret;
-	}
-	bool operator <= ( const variant& a , char b ){
-		bool ret = false;
-		auto a_ = a.get< decltype(b) >();
-		ret = ( a_ <= b );
-		return ret;
-	}
-	bool operator <= ( short b , const variant& a  ){
-		bool ret = false;
-		auto a_ = a.get< decltype(b) >();
-		ret = ( a_ <= b );
-		return ret;
-	}
-	bool operator <= ( const variant& a , short b ){
-		bool ret = false;
-		auto a_ = a.get< decltype(b) >();
-		ret = ( a_ <= b );
-		return ret;
-	}
-	bool operator <= ( int b, const variant& a  ){
-		bool ret = false;
-		auto a_ = a.get< decltype(b) >();
-		ret = ( a_ <= b );
-		return ret;
-	}
-	bool operator <= ( const variant& a , int b ){
-		bool ret = false;
-		auto a_ = a.get< decltype(b) >();
-		ret = ( a_ <= b );
-		return ret;
-	}
-	bool operator <= ( int64_t b , const variant& a  ){
-		bool ret = false;
-		auto a_ = a.get< decltype(b) >();
-		ret = ( a_ <= b );
-		return ret;
-	}
-	bool operator <= ( const variant& a , int64_t b ){
-		bool ret = false;
-		auto a_ = a.get< decltype(b) >();
-		ret = ( a_ <= b );
-		return ret;
-	}
-	bool operator <= ( uint8_t b , const variant& a  ){
-		bool ret = false;
-		auto a_ = a.get< decltype(b) >();
-		ret = ( a_ <= b );
-		return ret;
-	}
-	bool operator <= ( const variant& a , uint8_t b ){
-		bool ret = false;
-		auto a_ = a.get< decltype(b) >();
-		ret = ( a_ <= b );
-		return ret;
-	}
-	bool operator <= ( uint16_t b , const variant& a  ){
-		bool ret = false;
-		auto a_ = a.get< decltype(b) >();
-		ret = ( a_ <= b );
-		return ret;
-	}
-	bool operator <= ( const variant& a , uint16_t b ){
-		bool ret = false;
-		auto a_ = a.get< decltype(b) >();
-		ret = ( a_ <= b );
-		return ret;
-	}
-	bool operator <= ( uint32_t b , const variant& a  ){
-		bool ret = false;
-		auto a_ = a.get< decltype(b) >();
-		ret = ( a_ <= b );
-		return ret;
-	}
-	bool operator <= ( const variant& a , uint32_t b ){
-		bool ret = false;
-		auto a_ = a.get< decltype(b) >();
-		ret = ( a_ <= b );
-		return ret;
-	}
-	bool operator <= ( uint64_t b , const variant& a  ){
-		bool ret = false;
-		auto a_ = a.get< decltype(b) >();
-		ret = ( a_ <= b );
-		return ret;
-	}
-	bool operator <= ( const variant& a , uint64_t b ){
-		bool ret = false;
-		auto a_ = a.get< decltype(b) >();
-		ret = ( a_ <= b );
-		return ret;
-	}
-	bool operator <= ( const std::string& b , const variant& a  ){
-		bool ret = false;
-		auto a_ = a.get< decltype(b) >();
-		ret = ( a_ <= b );
-		return ret;
-	}
-	bool operator <= ( const variant& a , const std::string& b ){
-		bool ret = false;
-		auto a_ = a.get< decltype(b) >();
-		ret = ( a_ <= b );
-		return ret;
-	}
-
 }
