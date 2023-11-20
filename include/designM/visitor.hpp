@@ -64,10 +64,8 @@ public:
 		if( it ){
 			return it->second( data );
 		}
-		
 		return {};
 	}
-	
 	/**
 	 * @brief 调用方法处理批量数据
 	 * @param name[ I ], 方法名称
@@ -80,6 +78,13 @@ public:
 		for( auto it1 = begin; it1 != end; ++it1 ){
 			it->second( *it1 );
 		}
+	}
+	/**
+	 * @brief 检查是否存在指定的方法
+	*/
+	bool has( const std::string& name ){
+		auto it = m_funcs__.find( name );	
+		return it != m_funcs__.end();
 	}
 };
 }}
