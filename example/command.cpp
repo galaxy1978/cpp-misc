@@ -64,5 +64,7 @@ int main()
 		std::unique_lock< std::mutex > lck( gMutex );
 		cv.wait( lck );
 	}
+
+    p_loop->stop();
 	return 0;
 }
