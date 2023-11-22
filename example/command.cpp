@@ -14,7 +14,7 @@ enum class emEVT
 	EVT_A,
 	EVT_B, 
 	EVT_C
-}
+};
 
 IMP_CMD( emEVT );
 
