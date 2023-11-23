@@ -40,7 +40,7 @@ namespace wheels{namespace dm {
 	
 	#define END_PROXY_ITFC   };
 	
-	template< typename ITFC_TYPE , typename CONCREATE_TYPE = void >
+	template< typename ITFC_TYPE , typename CONCREATE_TYPE >
 	class proxy : public ITFC_TYPE
 	{
 	public:
