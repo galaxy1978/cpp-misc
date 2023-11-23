@@ -24,7 +24,7 @@ namespace wheels{namespace dm {
 	};
 
 	#define DECLARE_PROXY_ITFC( name )    \
-	struct name {
+	struct name : public private__::itfcBase{
 		
 	#define PROXY_ITFC_MTD( ret , name )   virtual ret name() = 0;
 	#define PROXY_ITFC_MTD_1( ret , name , param1 ) virtual ret name( param1 ) = 0;
