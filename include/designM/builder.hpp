@@ -2,7 +2,9 @@
  * @brief 建造者模式
  * @version 1.0
  * @author 宋炜
- * @date 2023-7-4
+ * @date 2023-7-4~2023-11-26
+ *
+ * 2023-11-26 增加std::tuple支持，改善名字冲突的问题
 */
 
 #pragma once
