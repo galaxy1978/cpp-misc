@@ -17,9 +17,9 @@ protected:
 public:
 	virtual ~product(){}
 	
-	template< int idx >
+	template< int N >
 	auto get()->decltype(typename std::tuple_element< N , prdtTypes >::type){
-		return std::get< idx >( m_parts__ );
+		return std::get< N >( m_parts__ );
 	}
 	
 	template< int idx , typename PART_TYPE >
@@ -56,7 +56,8 @@ public:
 
 public:
 	template< typename... Params >
-	static  std::shared_ptr< product_t > build( std::function< void ( std::shared_ptr< product_t > ) >fun ){
+	static  std::shared_ptr< product_t > 
+	build( std::function< void ( std::shared_ptr< product_t > ) >fun ){
 		std::shared_ptr< product_t >   pt_product;
 		try{
 			pt_product.reset( new product_t );
