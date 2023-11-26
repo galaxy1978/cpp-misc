@@ -7,7 +7,27 @@
 
 #pragma once
 namespace wheels{ namespace dm {
-
+#if BUILD_USE_TUPLE == 1
+#include <tuple>
+template< itfcType , typename ...Parts >
+class product
+{
+protected:
+	std::tuple< Parts... >   m_parts__;
+public:
+	virtual ~product(){}
+	
+	template< int idx >
+	auto get()->decltype(typename std::tuple_element< N , prdtTypes >::type){
+		return std::get< idx >( m_parts__ );
+	}
+	
+	template< int idx , typename PART_TYPE >
+	void set( PART_TYPE param ){
+		std::get< idx >( m_parts__ ) = param;
+	}
+};
+#else
 template< typename itfcType , typename... Parts > class product{};
 
 template< typename itfcType , typename Part1 , typename... Parts > 
@@ -23,7 +43,7 @@ class product<itfcType>: public itfcType{
 public:
 	virtual ~product(){}
 };
-
+#endif
 /**
  * @brief 
  * @tparam Parts ，组件表
