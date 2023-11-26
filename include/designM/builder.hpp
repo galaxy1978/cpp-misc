@@ -8,6 +8,9 @@
 */
 
 #pragma once
+#include <memory>
+#include <functional>
+
 namespace wheels{ namespace dm {
 #if BUILD_USE_TUPLE == 1
 #include <tuple>
