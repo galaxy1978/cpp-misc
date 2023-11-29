@@ -56,15 +56,19 @@ public:
     adapter(const T&... adap) : m_adaptees__(adap...) {}
     virtual ~adapter(){}
     /**
-     * @brief set
-     * @param fun
+     * @brief 设置回调函数。在回调函数中进行适配操作
+     * @param fun[ I ]，回调函数对象
      */
     template< typename ...Params >
     void set( std::function<  void (Params&&...) > fun ){
         static_assert( std::is_same< std::function<  void (Params&&...) > , functor >::value , "" );
         m_callback__ = fun;
     }
-
+    /**
+     * @brief 执行请求操作
+     * @tparam Params 参数类型表
+     * @param params[ IO ]， 参数表
+     */
     template< typename ...Params >
     void request( Params&& ...params ) {
         CALLER_HELPER__< sizeof...(T) , adapter<functor , itfcType , T...> , std::tuple<T...> >::
@@ -73,7 +77,7 @@ public:
 public:
     functor  m_callback__;
 protected:
-    std::tuple<T...>    m_adaptees__;
+    std::tuple<T...>    m_adaptees__;      // 被适配的对象
     // 检查每一个被适配对象和接口是否相符合
     TYPE_CHK_HELPER__<itfcType , T...>   m_chk_helper__[0];
 };
