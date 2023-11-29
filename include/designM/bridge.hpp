@@ -8,61 +8,62 @@
 #pragma once
 #include <type_traits>
 #include <memory>
-#include <iostream>
-namespace wheels
+#include <functional>
+#include <stdexcept>
+
+namespace wheels{namespace dm{
+template< typename itfcType , typename implType >
+class bridge
 {
-	namespace dm
-	{
-		template< typename itfcType , typename implType >
-		class bridge
-		{
-        public:
-            using itfc_t = typename std::remove_pointer< typename std::decay< itfcType >::type >::type;
-            using impl_t = typename std::remove_pointer< typename std::decay< implType >::type >::type;
-			// 实际实现类必须是接口类的子类
-			static_assert( std::is_base_of<itfcType , implType >::value, "Interface type must be base class of implemention class." );
-		public:
-			enum emErrCode{
-				ERR_IMP_NULL = -1,
-				OK = 0
-			};
-		private:
-            std::shared_ptr< itfc_t > pt_imp__;
-		public:
-			bridge(){}
-			template< typename ...Args >
-            bridge(Args&&... args ){
-                pt_imp__ = std::make_shared< impl_t >( std::forward< Args >(args)...);
-			}
-	
-            virtual ~bridge(){}
-			
-			template< typename ...Args >
-			static bridge * create( Args... args ){
-				try{
-					bridge * ret = new bridge( (0,args)... );
-					return ret;
-				}catch( std::bad_alloc& e ){
-					std::cout << e.what();
-				}
-				
-				return nullptr;
-			}
+public:
+    using itfc_t = typename std::remove_pointer< typename std::decay< itfcType >::type >::type;
+    using impl_t = typename std::remove_pointer< typename std::decay< implType >::type >::type;
+    // 实际实现类必须是接口类的子类
+    static_assert( std::is_base_of<itfcType , implType >::value, "Interface type must be base class of implemention class." );
 
-			/**
-			 * @brief 重载方便访问具体实现的接口。
-			 * @exception 如果实现对象指针为空，则抛出异常
-			 */
-			itfcType * operator->(){
-                if( pt_imp__ == nullptr ) throw ERR_IMP_NULL;
-                return pt_imp__;
-			}
+private:
+    std::shared_ptr< impl_t > pt_imp__;
+public:
+    bridge(){}
+    template< typename ...Args >
+    bridge(Args&&... args ){
+        pt_imp__ = std::make_shared< impl_t >( std::forward< Args >(args)...);
+    }
 
-			implType& operator*(){
-                if( pt_imp__ == nullptr ) throw ERR_IMP_NULL;
-                return *(implType*)pt_imp__;
-			}
-	
-		};
-	}
-}
+    virtual ~bridge(){}
+
+    template< typename ...Args >
+    static bridge * create( Args&&... args ){
+
+        bridge * ret = new bridge( std::forward<Args>(args)... );
+        return ret;
+    }
+
+    template< typename ...Args >
+    static bridge * create( std::function< void ( bridge * b , Args&&...) > func,  Args&&... args ){
+
+        bridge * ret = new bridge( std::forward<Args>(args)... );
+
+        if( func ){
+            func( ret , std::forward<Args>(args)... );
+        }
+
+        return ret;
+    }
+
+    /**
+     * @brief 重载方便访问具体实现的接口。
+     * @exception 如果实现对象指针为空，则抛出异常
+     */
+    impl_t * operator->(){
+        if( pt_imp__ == nullptr ) throw std::runtime_error( "object empty" );
+        return pt_imp__.get();
+    }
+
+    impl_t& operator*(){
+        if( pt_imp__ == nullptr ) throw std::runtime_error( "object empty" );;
+        return *pt_imp__.get();
+    }
+
+};
+}}
