@@ -7,9 +7,6 @@
 
 #pragma once
 
-#include <type_traits>
-#include <memory>
-#include <iostream>
 #include "designM/factory.hpp"
 
 namespace wheels
@@ -86,7 +83,7 @@ public:									\
 		return factory< productType >( param );			\
 	}
 
-#define PRODUCT_NAME_2( productType , baseType , , paramType1 ,paramType2 ) \
+#define PRODUCT_NAME_2( productType , baseType , paramType1 ,paramType2 ) \
 	virtual baseType * create_##baseType( paramType1 param , paramType2 param ) override \
 	{								\
 		return factory< productType >( param , param2 );	\
