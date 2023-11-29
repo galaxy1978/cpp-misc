@@ -34,7 +34,7 @@ namespace wheels
 					__p_imp = b.__p_imp;
 					return *this;
 				}
-			
+			 
 				itfcType * operator->(){ return __p_imp; }
 
 				void set( itfcType * imp ){ __p_imp = imp; }
