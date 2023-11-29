@@ -58,6 +58,7 @@ namespace dm{
          * @param func[ I ]， 回调函数，返回true继续遍历，否则结束遍历操作
          */
         void preOrderTraversal(std::function<bool (type_t*)> func) {
+            if( isLeaf() ) return;
             std::stack<iterator> stack;
             stack.push(m_children__.begin());
             while (!stack.empty()) {
