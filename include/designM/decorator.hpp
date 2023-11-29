@@ -6,7 +6,7 @@
  */
 
 #pragma once
-
+#include <type_traits>
 #include <vector>
 #include <functional>
 
@@ -18,27 +18,28 @@ namespace wheels
 		class decorator
 		{		
 		public:
+            using itfc_t = typename std::remove_pointer< typename std::decay<itfcType>::type >::type;
 			/**
 			 * @brief 装饰品包装，类似与化妆品包装盒
 			 */
 			class decoratee 
 			{
 			protected:
-				itfcType  * __p_imp;     // 实际的装饰品，类似实际的化妆品
+                itfc_t  * p_imp__;     // 实际的装饰品，类似实际的化妆品
 			public:
-				decoratee():__p_imp( nullptr ){}
-				decoratee( itfcType * imp ):__p_imp( imp ){}
-				decoratee( itfcType&& b ): __p_imp( b.__p_imp ){}
+                decoratee():p_imp__( nullptr ){}
+                decoratee( itfcType * imp ):p_imp__( imp ){}
+                decoratee( itfcType&& b ): p_imp__( b.p_imp__ ){}
 
 				decoratee& operator=( itfcType&& b ){
-					__p_imp = b.__p_imp;
+                    p_imp__ = b.p_imp__;
 					return *this;
 				}
-			 
-				itfcType * operator->(){ return __p_imp; }
+			
+                itfcType * operator->(){ return p_imp__; }
 
-				void set( itfcType * imp ){ __p_imp = imp; }
-				itfcType * get(){ return __p_imp; }
+                void set( itfcType * imp ){ p_imp__ = imp; }
+                itfcType * get(){ return p_imp__; }
 			};
 
 			// 装饰品数据类型包装数据类型
@@ -47,7 +48,7 @@ namespace wheels
 			using data_t = std::vector< dcrte_t >;
             using iterator = typename data_t :: iterator;
 		protected:
-			data_t __m_dcrtes;
+            data_t m_dcrtes__;
 		public:
 			decorator(){}
 			virtual ~decorator(){}
@@ -59,8 +60,8 @@ namespace wheels
 			 * @note 添加装饰的时候返回的是其索引，如果后续修改了需要同步操作
 			 */
             size_t decrat( dcrte_t& dcrtee ){
-                __m_dcrtes.push_back( dcrtee );
-				return __m_dcrtes.size() - 1;
+                m_dcrtes__.push_back( dcrtee );
+                return m_dcrtes__.size() - 1;
 			}
 			/**
 			 * @brief 通过接口类型添加装饰品
@@ -68,16 +69,16 @@ namespace wheels
 			 * @return
 			 */
 			size_t decrat( itfcType * dcrtee ) {
-				__m_dcrtes.push_back( decrat_t( dcrtee ) );
-				return __m_dcrtes.size() - 1;
+                m_dcrtes__.push_back( decrat_t( dcrtee ) );
+                return m_dcrtes__.size() - 1;
 			}
 			
 			/**
 			 * @brief 移除装饰品
 			 */
 			void remove( size_t idx ){
-				if( idx < __m_dcrtes.size() ){
-					__m_dcrtes.erase( idx );
+                if( idx < m_dcrtes__.size() ){
+                    m_dcrtes__.erase( idx );
 				}
 			}
 			/**
@@ -87,23 +88,23 @@ namespace wheels
 			 * @note 这个接口会使用openomp的方式并行执行，如果在业务程序中存在互斥数据应该自行处理好
 			 */
             void decratMe( std::function< void (dcrte_t & ) > cb ){
-				size_t count = __m_dcrtes.size();
+                size_t count = m_dcrtes__.size();
 			
 				for( size_t i = 0; i < count; i ++ ){
-					cb( __m_dcrtes[ i ] );
+                    cb( m_dcrtes__[ i ] );
 				}
 			}
 
             void decratMe( std::function< void (itfcType * itfc ) > cb ){
-				size_t count = __m_dcrtes.size();
+                size_t count = m_dcrtes__.size();
 			
 				for( size_t i = 0; i < count; i ++ ){
-					cb( __m_dcrtes[ i ] );
+                    cb( m_dcrtes__[ i ] );
 				}
 			}
 		
-			iterator begin(){ return __m_dcrtes.begin(); }
-			iterator end(){ return __m_dcrtes.end(); }
+            iterator begin(){ return m_dcrtes__.begin(); }
+            iterator end(){ return m_dcrtes__.end(); }
 		};
 	}
 }
