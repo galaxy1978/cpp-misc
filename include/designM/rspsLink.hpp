@@ -10,59 +10,34 @@
 #include <functional>
 #include <list>
 /// 使用示例：
-/*
-#include <vector>
-#include <iostream>
+///
+/// class myItfc{
+///    virtual int do_something( int ) = 0;
+///    定义接口
+/// };
 
-#include "designM/rspsLink.hpp"
+/// class myItfc1 : public myItfc{
+///      接口实现1
+/// };
 
+/// class myItfc1 : public myItfc{
+///      接口实现2
+/// };
 
-using namespace wheels;
-using namespace dm;
+/// class myRsps : public rspsLink< myItfc >{
+///        自己的定义和方法
+/// }
 
-class responseItfc
-{
-public:
-	virtual void response( int r ) = 0;
-};
-
-class rsps1: public responseItfc
-{
-	public:
-	virtual void response( int r )
-	{
-		std::cout << r << std::endl;
-	}
-};
-
-class rsps2: public responseItfc
-{
-	public:
-	virtual void response( int r )
-	{
-		std::cout << r * 2 - 7 << std::endl;
-	}
-};
-
-int main( void )
-{
-	rspsLink< responseItfc >  rsps;
-	rsps1  a;
-	rsps2  b;
-	
-	rsps.push_back( &a );
-	rsps.push_back( &b );
-	
-	rsps.forward( [=]( rspsLink<responseItfc>::stLinkItem& item ){
-		item->response( 10 );
-	} );
-	
-	rsps.forward( []( rspsLink<responseItfc>::stLinkItem& item ){
-		item->response( 10 );
-	} );
-	
-	return 0;
-}*/
+/// myRsps rsps;
+/// rsps.push_back( new myItfc1 );
+/// rsps.push_back( new myItfc2 );
+/// rsps.push_back( ... );
+///
+/// 按照责任链传递操作
+/// int a = 1;
+/// rsps.forward([&]( myRsps::stLinkItem& item ){
+///       a = item->do_something( a );
+/// });
 namespace wheels
 {
 namespace dm
@@ -94,6 +69,7 @@ namespace dm
 		link_t             __m_link;
 		mutable iterator   __m_curr_it;
 		bool               __m_started;
+		bool               __m_is_end;
 	public:
 		rspsLink():__m_started( false ){}
 		virtual ~rspsLink(){}
@@ -114,12 +90,15 @@ namespace dm
 			
 			if( __m_link.size() == 0 ) return false;
 			if( __m_curr_it == __m_link.end() ){
+				__m_is_end = true;
+				__m_started = false;
 				__m_curr_it = __m_link.begin();
 				return false;
 			}
 			if( !cb ) return false;
 			if( __m_started == false ){
 				__m_started = true;
+				__m_is_end = false;
 				__m_curr_it = __m_link.begin();
 			}
 			
@@ -128,6 +107,8 @@ namespace dm
 			
 			return ret;
 		}
+
+		bool isEnd(){ return __m_is_end; }
 		/**
 		 * @brief 执行一次链式传递,从链尾部传递到头
 		 * @param cb 传递过程的处理方法
@@ -145,11 +126,14 @@ namespace dm
 			if( __m_curr_it == __m_link.rend() ){
 				__m_curr_it = __m_link.rend();
 				__m_curr_it ++;
+				__m_is_end = true;
+				__m_started = false;
 				return false;
 			}
 			
 			if( __m_started == false ){
 				__m_started = true;
+				__m_is_end = false;
 				__m_curr_it = __m_link.rbegin();
 			}
 			
@@ -157,7 +141,8 @@ namespace dm
 
 			cb( *__m_curr_it );
 			__m_curr_it ++;
-		
+
+            return ret;
 		}
 		/**
 		 * 在指定位置之前添加处理接口
