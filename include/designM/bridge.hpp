@@ -7,14 +7,18 @@
 
 #pragma once
 #include <type_traits>
+#include <memory>
 #include <iostream>
-namepace wheels
+namespace wheels
 {
 	namespace dm
 	{
 		template< typename itfcType , typename implType >
 		class bridge
 		{
+        public:
+            using itfc_t = typename std::remove_pointer< typename std::decay< itfcType >::type >::type;
+            using impl_t = typename std::remove_pointer< typename std::decay< implType >::type >::type;
 			// 实际实现类必须是接口类的子类
 			static_assert( std::is_base_of<itfcType , implType >::value, "Interface type must be base class of implemention class." );
 		public:
@@ -23,19 +27,15 @@ namepace wheels
 				OK = 0
 			};
 		private:
-			itfcType	* __p_imp;
+            std::shared_ptr< itfc_t > pt_imp__;
 		public:
 			bridge(){}
 			template< typename ...Args >
-			bridge(Args... args ){
-				__p_imp = new implType( (0,args)...);		
+            bridge(Args&&... args ){
+                pt_imp__ = std::make_shared< impl_t >( std::forward< Args >(args)...);
 			}
 	
-			virtual ~bridge(){
-				if( __p_imp ){
-					delete __p_imp;
-				}
-			}
+            virtual ~bridge(){}
 			
 			template< typename ...Args >
 			static bridge * create( Args... args ){
@@ -54,13 +54,13 @@ namepace wheels
 			 * @exception 如果实现对象指针为空，则抛出异常
 			 */
 			itfcType * operator->(){
-				if( __p_imp == nullptr ) throw ERR_IMP_NULL;
-				return __p_imp;
+                if( pt_imp__ == nullptr ) throw ERR_IMP_NULL;
+                return pt_imp__;
 			}
 
 			implType& operator*(){
-				if( __p_imp == nullptr ) throw ERR_IMP_NULL;
-				return *(implType*)__p_imp;
+                if( pt_imp__ == nullptr ) throw ERR_IMP_NULL;
+                return *(implType*)pt_imp__;
 			}
 	
 		};
