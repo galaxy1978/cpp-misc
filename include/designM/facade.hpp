@@ -24,45 +24,19 @@ namespace facade_private__ {
 }
 
 namespace wheels{ namespace dm {
-// 以继承的方式实现
-template <typename retType, typename... subTypes> struct facadeInh{};
-
-template <typename retType, typename subType1, typename... subTypes>
-struct facadeInh<retType, subType1, subTypes...> : public subType1, public facadeInh<retType, subTypes...>{};
-
-template <typename retType>
-struct facadeInh<retType>
-{
-	template <typename... Args>
-	retType run(std::function<retType(facadeInh<retType> * )> func)	{
-		return func(this);
-	}
-};
-
-// 下面是方式2， 以接口的方式实现
-// -----------------------------------------------------------------------------------------------
-// -----------------------------------------------------------------------------------------------
-#define FACADE_START_DECLARE_SUB_ITFC( name ) \
-struct name{ \
-	virtual ~name(){}
-
-#define FACADE_END_DECLARE_SUB_ITFC  };
-
-#define FACADE_ADD_ITFC( RET , NAME , ... ) \
-virtual RET NAME( __VA_ARGS__ ) = 0;
-
 
 template< typename itfcType ,  typename... subTypes >
-class facadeItfc
+class facade
 {
 public:
     using itfc_t = typename std::remove_pointer< typename std::decay< itfcType >::type >::type;
+    using iterator = typename std::vector< itfc_t * >::iterator;
 public:
 
 	template< int N , typename tupleParams >
 	struct INIT_HELPER__
 	{
-		static void init__( std::vector< itfcType * >& vec , tupleParams& t ){
+        static void init__( std::vector< itfc_t * >& vec , tupleParams& t ){
 			vec[ N - 1 ] = std::get< N - 1 >( t );
 			
 			INIT_HELPER__< N - 1 , tupleParams >::init__( vec , t );
@@ -71,22 +45,43 @@ public:
 	
 	template< typename tupleParams >
 	struct INIT_HELPER__<0 , tupleParams >{
-        static void init__( std::vector< itfcType * >&  , tupleParams& ){}
+        static void init__( std::vector< itfc_t * >&  , tupleParams& ){}
 	};
 protected:
     std::vector< itfc_t * >  m_subs__;
 
     facade_private__::TYPE_CHK_HELPER__<itfc_t , subTypes... >   m_chker__[0];
 public:
-    facadeItfc(subTypes*... subs):m_subs__( sizeof...(subTypes) ) {
+    facade(){}
+
+    facade( std::vector< itfc_t * > subs ):m_subs__( subs ) {}
+
+    facade(subTypes*... subs):m_subs__( sizeof...(subTypes) ) {
 		std::tuple< subTypes*... > t = std::make_tuple( subs... );
 		INIT_HELPER__< sizeof...( subTypes ) ,decltype(t) >::init__( m_subs__ , t );
 	}
 
-    void run(std::function< void ( itfcType * )> fun) {
+    virtual ~facade(){}
+
+    template< typename subType >
+    void add( subType * obj ){
+        facade_private__::TYPE_CHK_HELPER__<itfc_t , subType >   m_chker__[0];
+        m_subs__.push_back( obj );
+    }
+
+    void erase( iterator it ){
+        m_subs__.erase( it );
+    }
+
+    void erase( iterator b , iterator e ){
+        m_subs__.erase( b , e );
+    }
+
+    template< typename ...Params >
+    void run(std::function< void ( itfc_t * , Params&&... )> fun , Params&&... args) {
 		for( int i = 0; i < sizeof...( subTypes ); i ++ ){
 			if( m_subs__[ i ] != nullptr ){
-				fun( m_subs__[ i ] );
+                fun( m_subs__[ i ] , std::forward<Params>(args )...);
 			}
 		}
     }
