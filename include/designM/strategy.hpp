@@ -8,7 +8,8 @@
 #pragma once
 
 #include <type_traits>
-#include <map>
+#include <unordered_map>
+#include <iostream>
 #include <functional>
 #include <cstddef>
 
@@ -22,15 +23,17 @@ namespace wheels
 	 */
 	namespace dm
 	{
+		template< typename keyType , typename funcType > struct strategy{};
+		
 		template< typename keyType , typename Ret , typename ...Args >
-		class strategy{
+		class strategy< keyType , std::function< Ret (Args...) > >{
 		public:
-			using callee_type = std::function<Ret (Args... args) >;
-			using iterator = typename std::map< keyType , callee_type >::iterator;
+			using callee_type = std::function< Ret (Args...) >;
+			using iterator    = typename std::unordered_map< keyType , callee_type >::iterator;
 		protected:
-			std::map< keyType , callee_type >    __m_strates;
+			std::unordered_map< keyType , callee_type >    __m_strates;
 		public:
-			strategy(){};
+			strategy(){}
 			virtual ~strategy(){}
 			/**
 			 * @brief 添加算法操作
@@ -68,32 +71,41 @@ namespace wheels
 			size_t count(){ return __m_strates.size(); }
 
 			void call_each( iterator from , iterator to , Args... args ){
-				for( auto it = from; it != to; it ++ ){
+				for( auto it = from; it != to; ++it ){
 					it->second( (0,args)... );
 				}
 			}
 			/**
 			 * @brief 针对所有的内容执行一次
 			 */
-			void call_each( Args... args ){
-				for( auto it = __m_strates.begin(); it != __m_strates.end(); it ++ ){
-					it->second( (0,args)... );
+			void call_each( Args&&... args ){
+				for( auto it = __m_strates.begin(); it != __m_strates.end(); ++it ){
+					it->second( std::forward<Args>(args)... );
 				}
 			}
 			/**
 			 * @brief 执行算法操作
 			 * @param key[ I ], 执行调节
 			 * @param args[ IO ], 算法参数表
+			 * @exception 找不到合适的策略会抛出-1
 			 */
-			Ret call( const keyType& key , Args... args ){
+			Ret call( const keyType& key , Args&&... args ){
 				auto it = __m_strates.find( key );
 				if( it != __m_strates.end() ){
-					return it->second((0,args)...);
+					return it->second(std::forward<Args>(args)...);
 				}
-
-                throw std::runtime_error( "can not find algorithm." );
+				std::cout << "Can not find strategy key" << std::endl;
+				throw std::runtime_error( "branch is not exist" );
 			}
 		};
+		
+		// 用来支持从普通函数指针来推导接口类型
+		template< typename keyType , typename Ret , typename ...Args >
+		class strategy< keyType , Ret (Args...) > : public strategy<keyType , std::function<Ret (Args...)> >{};
+		
+		// 用来支持从类成员函数对到接口类型
+		template<typename keyType , typename classType , typename funcType >
+		class strategy< keyType , funcType classType::*> : public strategy< keyType , std::function< funcType > >{};
 	}
 }
 /**
@@ -118,6 +130,11 @@ namespace wheels
    
  // 初始化
  strategy<int , void , int >  st;
+ // 或者
+ strategy< int , void(int) > st;
+ // 或者
+ strategy< int , decltype(&stra_base::callee) > st;
+ 
  st.add( 0 , [&]( int param ){
  a.callee( param );
  });
