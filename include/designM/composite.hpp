@@ -40,7 +40,7 @@ namespace dm{
 		 */
 		void add( std::shared_ptr< composite_t> child ){
 			if( !child ) return;
-			m_children__.push_heap( child );
+            m_children__.push_back( child );
 		}
 
 		void remove( std::shared_ptr< composite_t> child ){
