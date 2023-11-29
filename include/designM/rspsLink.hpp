@@ -21,6 +21,7 @@ namespace dm
         {
             virtual bool operation( Params&& ... args ) = 0;
         };
+
         using itfc_t = itfc;
         using link_t =  std::list< itfc * >;
         using iterator = typename link_t::iterator;
@@ -38,14 +39,13 @@ namespace dm
                 }
             }
         }
-		/**
-		 * @brief 添加处理接口
-		 * @param 处理接口对象指针
-		 */
-        void push_back( itfc_t * rsps ){
+
+        template< typename subType >
+        void push_back( subType * rsps ){
+            static_assert( std::is_base_of<itfc_t , subType >::value , "" );
             m_link__.push_back( rsps );
-		}
-		
+        }
+
 		void erase( iterator it ){
             m_link__.erase( it );
 		}
