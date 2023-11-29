@@ -6,16 +6,14 @@
 */
 
 #pragma once
-
-template< typename T,
-		  typename midType = typename std::decay< T >::type ,
-		  typename midType2 = typename std::remove_pointer< midType >::type,
-		  typename realType = typename std::enable_if< 
-									std::is_copy_constructible<midType2>::value && std::is_class< midType2 >::value , midType2 
-							>::type
-        >
+#include <type_traits>
+#include <iostream>
+namespace wheels{ namespace dm{
+template< typename T >
 struct protoType
 {
+public:
+    using realType = typename std::remove_pointer< typename std::decay< T >::type >::type;
 public:
 	realType * clone( const realType& old ) const {
 		realType * ret = nullptr;
@@ -27,7 +25,7 @@ public:
 		
 		return ret;
 	}
-}
+};
 
 template< typename T ,
 		  typename midType = typename std::decay< T >::type ,
@@ -47,3 +45,4 @@ realType * clone( const realType& old )
 		
 	return ret;
 }
+}}
