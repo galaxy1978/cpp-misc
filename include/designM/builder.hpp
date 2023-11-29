@@ -50,27 +50,48 @@ public:
     virtual ~product(){}
 };
 #endif
+
+// 如果要使用接口方式使用director，需要BUILD_USE_DIR_ITFC配置为1，并实现
+// 相关的虚函数。调用build函数的时候，就
+#if BUILD_USE_DIR_ITFC == 1
+struct dir_base_itfc{};
+
+template< typename pdtItfcType , typename ...Params >
+struct directorItfc : public dir_base_itfc
+{
+    virtual std::shared_ptr<pdtItfcType> build( Params&& ... args ) = 0;
+};
+#endif
 /**
  * @brief
  * @tparam Parts ，组件表
 */
-template< typename pdtItfcType , typename... Parts >
+template<
+#if BUILD_USE_DIR_ITFC == 1
+    typename DIR_T
+#endif
+    typename pdtItfcType , typename... Parts >
 class director
+#if BUILD_USE_DIR_ITFC == 1
+    public DIR_T
+#endif
 {
 public:
     using itfc_t = typename std::remove_pointer< typename std::decay< pdtItfcType >::type >::type;
     using product_t = product< itfc_t , Parts... >;
-
+#if BUILD_USE_DIR_ITFC == 1
+    static_assert( std::is_base_of< dir_base_itfc , DIR_T >::value , "" )
+#endif
 public:
     director(){}
     virtual ~director(){}
-
+#if BUILD_USE_DIR_ITFC == 0
     template< typename... Params >
     static  std::shared_ptr< product_t >
-    build( std::function< void ( std::shared_ptr< product_t > ) >fun ){
+    build( std::function< void ( std::shared_ptr< product_t > ) >fun , Params&&... args ){
         std::shared_ptr< product_t >   pt_product;
         try{
-            pt_product.reset( new product_t );
+            pt_product = std::make_shared< product_t >( std::forward<Params>( args )...);
             if( fun ){
                 fun( pt_product );
             }
@@ -86,5 +107,6 @@ public:
 
         return pt_product;
     }
+#endif
 };
 }}
