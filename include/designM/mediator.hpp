@@ -135,7 +135,7 @@ namespace wheels { namespace dm {
 	}
 #endif
     public:
-        mediator(){}
+         mediator():m_is_running__( false ){}
         virtual ~mediator(){}
         /**
          * @brief 增加参与者
