@@ -60,10 +60,7 @@ public:
      * @param fun[ I ]，回调函数对象
      */
     template< typename ...Params >
-    void set( std::function<  void (Params&&...) > fun ){
-        static_assert( std::is_same< std::function<  void (Params&&...) > , functor >::value , "" );
-        m_callback__ = fun;
-    }
+    void set( functor fun ){ m_callback__ = fun; }
     /**
      * @brief 执行请求操作
      * @tparam Params 参数类型表
