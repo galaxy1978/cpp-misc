@@ -39,7 +39,7 @@ namespace wheels { namespace dm {
 #if MEDIATOR_USE_TUPLE
 
     template< typename MEDIATOR , typename ...PARAMS >
-    struct colleagueItfc : public private__::colleagueBase
+    struct colleagueItfc : public private__::colleagueBase , public std::enable_shared_from_this<colleagueItfc<MEDIATOR , PARAMS...> >
     {
     public:
         using mediator_t = typename std::remove_pointer< typename std::decay<MEDIATOR>::type >::type;
@@ -51,8 +51,8 @@ namespace wheels { namespace dm {
 		colleagueItfc( std::shared_ptr< mediator_t > m ):pt_mediator__(m){}
 		virtual ~colleagueItfc(){}
         // 发送消息接口，消息内容和数量是可以根据实际使用情况进行变化的
-        virtual void send( std::shared_ptr< mediaItfc_t > from , PARAMS&& ...args){
-            pt_mediator__->dispatch( from , std::forward<PARAMS>(args)...);
+        virtual void send( PARAMS&& ...args){
+            pt_mediator__->dispatch( (mediaItfc_t*)this , std::forward<PARAMS>(args)...);
         }
         virtual void sendTo( std::shared_ptr< mediaItfc_t > to , PARAMS&& ...args ){
             pt_mediator__->dispatchTo( to , std::forward<PARAMS>(args)...);
@@ -75,14 +75,14 @@ namespace wheels { namespace dm {
     public:
 		 colleagueItfc( std::shared_ptr< mediator_t > m ):pt_mediator__(m){}
 		 virtual ~colleagueItfc(){}
-         virtual void send( std::shared_ptr< mediaItfc_t > from , PARAMS&& ... args){
-             pt_mediator__->dispatch( frome , std::forward<PARAMS>(args)...);
-         }
-         virtual void send( std::shared_ptr< mediaItfc_t > to , PARAMS&& ...args ){
+          virtual void send( PARAMS&& ...args){
+            pt_mediator__->dispatch( (mediaItfc_t*)this , std::forward<PARAMS>(args)...);
+        }
+         virtual void sendTo( std::shared_ptr< mediaItfc_t > to , PARAMS&& ...args ){
              pt_mediator__->dispatchTo( to , std::forward<PARAMS>(args)...);
          };
-         virtual void send( std::vector< std::shared_ptr< mediaItfc_t > > dests , PARAMS&& ...args ){
-             pt_mediator__->dispatchTo( dests , std::forward<PARAMS>(args)...);
+         virtual void sendToDests( std::vector< std::shared_ptr< mediaItfc_t > > dests , PARAMS&& ...args ){
+             pt_mediator__->dispatchToDests( dests , std::forward<PARAMS>(args)...);
          };
 
         virtual void recv( PARAMS&& ...args ) = 0;
@@ -135,7 +135,7 @@ namespace wheels { namespace dm {
 	}
 #endif
     public:
-         mediator():m_is_running__( false ){}
+        mediator():m_is_running__( false ){}
         virtual ~mediator(){}
         /**
          * @brief 增加参与者
@@ -193,13 +193,13 @@ namespace wheels { namespace dm {
          * @param args[ I ]， 消息内容
          */
         template< typename ...PARAMS >
-        void dispatch(std::shared_ptr< itfc_t > sender, PARAMS&& ...args ) {
+        void dispatch(itfc_t * sender, PARAMS&& ...args ) {
 			static_assert( std::is_base_of<private__::colleagueBase , itfc_t >::value , "" );
             auto pt_tpl = std::make_shared< std::tuple<PARAMS...> >( std::forward<PARAMS>(args)... );
             std::unique_lock< std::mutex >  lck( m_mutex__ );
 
             for (auto colleague : m_colleague__) {
-                if (colleague != sender) {
+                if (colleague.get() != sender) {
                     stMsgs msg = { colleague , pt_tpl };
                     m_msgs__.push( msg );
                 }
@@ -258,10 +258,10 @@ namespace wheels { namespace dm {
          * @param args[ I ]， 消息内容
          */
         template< typename ...PARAMS >
-        void dispatch(std::shared_ptr< itfc_t > sender, PARAMS&& ...args ) {
+        void dispatch( itfc_t * sender, PARAMS&& ...args ) {
 			static_assert( std::is_base_of<private__::colleagueBase , itfc_t >::value , "" );
             for (auto colleague : m_colleague__) {
-                if (colleague != sender) {
+                if (colleague.get() != sender) {
                     colleague->recv( std::forward<PARAMS>( args )...);
                 }
             }
