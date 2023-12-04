@@ -1,88 +1,45 @@
 #include <iostream>
-#include <tuple>
 #include <functional>
-#include <type_traits>
 
+#include "designM/adaptor.hpp"
 
-// 适配者类
-class Adaptee1 {
+// 接口类
+class Interface {
 public:
-    virtual void specificRequest() = 0;
+    virtual void method(int param) = 0;
 };
 
-class Adaptee : public Adaptee1 {
+// 实现接口的类
+class Implementation1 : public Interface {
 public:
-    virtual void specificRequest() override {
-        std::cout << "Adaptee's specific request." << std::endl;
+    void method(int param) override {
+        std::cout << "Implementation1: " << param << std::endl;
     }
 };
 
-
-template< int N , typename adapterType , typename tplType >
-struct CALLER_HELPER__{
-	static void call( adapterType * adpter , tplType& t  ){
-		if( adpter && adpter->m_callback__ ){
-			adpter->m_callback__( &std::get< N - 1 >( t ) );
-			CALLER_HELPER__< N - 1 , adapterType , tplType>::call( adpter , t );
-		}
-	}
-};
-	
-template< typename adapterType , typename tplType  >
-struct CALLER_HELPER__< 0 ,  adapterType , tplType>{
-	
-	static void call( adapterType * adpter , tplType& t ){
-		(void)adpter;
-		(void)t;
-	}
-};
-
-template < typename itfcType , typename... implType >
-struct TYPE_CHK_HELPER__{};
-
-template< typename itfcType , typename implType1 , typename... implType >
-struct TYPE_CHK_HELPER__< itfcType , implType1 , implType...> //: public TYPE_CHK_HELPER__< itfcType , implType... >
-{
-	static_assert( std::is_base_of< itfcType , implType1 >::value , "" );
-};
-
-template< typename itfcType >
-struct TYPE_CHK_HELPER__<itfcType> {};
-
-// 适配器类
-template <typename itfcType , typename... T>
-class Adapter {
+class Implementation2 : public Interface {
 public:
-    Adapter(const T&... adap) : m_adaptees__(adap...) {}
-	
-	void set( std::function< void ( itfcType* ) > fun ){ m_callback__ = fun; }
-	
-    void request() {
-        CALLER_HELPER__< sizeof...(T) , Adapter<itfcType , T...> , std::tuple<T...> >::call( this , m_adaptees__ );
+    void method(int param) override {
+        std::cout << "Implementation2: " << param << std::endl;
     }
-	
-	std::function< void ( itfcType* ) >  m_callback__;
-protected:
-    std::tuple<T...>    m_adaptees__;
-	
-	TYPE_CHK_HELPER__<itfcType , T...>   m_chk_helper__[0];
 };
 
-
-	
 int main() {
-    // 创建适配者
-    Adaptee adaptee1;
-    Adaptee adaptee2;
+
+    // 创建被适配的对象
+    Implementation1 impl1;
+    Implementation2 impl2;
 
     // 创建适配器
-    Adapter<Adaptee1 , Adaptee, Adaptee> adapter(adaptee1, adaptee2);
-	
-	adapter.set( [](Adaptee1* adtee ){
-		adtee->specificRequest();
-	} );
-    // 使用适配器调用目标接口
-    adapter.request();
+    wheels::dm::adapter<std::function< void(Interface*, int) >, Interface, Implementation1, Implementation2> adapter(impl1, impl2);
+
+    // 设置回调函数
+    adapter.set([](Interface* obj, int param) {
+        obj->method(param);
+    });
+
+    // 执行请求
+    adapter.request(10);
 
     return 0;
 }
