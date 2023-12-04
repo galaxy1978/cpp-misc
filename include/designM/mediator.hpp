@@ -43,19 +43,22 @@ namespace wheels { namespace dm {
     {
     public:
         using mediator_t = typename std::remove_pointer< typename std::decay<MEDIATOR>::type >::type;
+		using mediaItfc_t = typename mediator_t::itfc_t;
 		using tuple_t = std::tuple< PARAMS... >;
     protected:
         std::shared_ptr< mediator_t >    pt_mediator__;
     public:
+		colleagueItfc( std::shared_ptr< mediator_t > m ):pt_mediator__(m){}
+		virtual ~colleagueItfc(){}
         // 发送消息接口，消息内容和数量是可以根据实际使用情况进行变化的
-        virtual void send( PARAMS&& ...args){
-            pt_mediator__->dispatch( std::forward<PARAMS>(args)...);
+        virtual void send( std::shared_ptr< mediaItfc_t > from , PARAMS&& ...args){
+            pt_mediator__->dispatch( from , std::forward<PARAMS>(args)...);
         }
-        virtual void send( std::shared_ptr< colleagueItfc > to , PARAMS&& ...args ){
+        virtual void sendTo( std::shared_ptr< mediaItfc_t > to , PARAMS&& ...args ){
             pt_mediator__->dispatchTo( to , std::forward<PARAMS>(args)...);
         };
-        virtual void send( std::vector< std::shared_ptr< colleagueItfc > > dests , PARAMS&& ...args ){
-            pt_mediator__->dispatchTo( dests , std::forward<PARAMS>(args)...);
+        virtual void sendToDests( std::vector< std::shared_ptr< mediaItfc_t > > dests , PARAMS&& ...args ){
+            pt_mediator__->dispatchToDests( dests , std::forward<PARAMS>(args)...);
         };
         // 接收处理接口
         virtual void recv( const std::tuple<PARAMS...>& tpl  ) = 0;
@@ -66,16 +69,19 @@ namespace wheels { namespace dm {
 	{
 	public:
 		 using mediator_t = typename std::remove_pointer< typename std::decay<MEDIATOR>::type >::type;
+		 using mediaItfc_t = typename mediator_t::itfc_t;
 	protected:
 		 std::shared_ptr< mediator_t >    pt_mediator__;
     public:
-         virtual void send( PARAMS&& ... args){
-             pt_mediator__->dispatch( std::forward<PARAMS>(args)...);
+		 colleagueItfc( std::shared_ptr< mediator_t > m ):pt_mediator__(m){}
+		 virtual ~colleagueItfc(){}
+         virtual void send( std::shared_ptr< mediaItfc_t > from , PARAMS&& ... args){
+             pt_mediator__->dispatch( frome , std::forward<PARAMS>(args)...);
          }
-         virtual void send( std::shared_ptr< colleagueItfc > to , PARAMS&& ...args ){
+         virtual void send( std::shared_ptr< mediaItfc_t > to , PARAMS&& ...args ){
              pt_mediator__->dispatchTo( to , std::forward<PARAMS>(args)...);
          };
-         virtual void send( std::vector< std::shared_ptr< colleagueItfc > > dests , PARAMS&& ...args ){
+         virtual void send( std::vector< std::shared_ptr< mediaItfc_t > > dests , PARAMS&& ...args ){
              pt_mediator__->dispatchTo( dests , std::forward<PARAMS>(args)...);
          };
 
@@ -83,22 +89,24 @@ namespace wheels { namespace dm {
     };
 #endif
 
-    template< typename ITFC_TYPE >
+    template< typename ITFC_TYPE 
+#if MEDIATOR_USE_TUPLE
+		, typename ...Params
+#endif		
+>
     class mediator
     {
     public:
         using itfc_t = typename std::remove_pointer< typename std::decay<ITFC_TYPE>::type >::type;
         using data_t = std::unordered_set< std::shared_ptr< itfc_t > >;
 #if MEDIATOR_USE_TUPLE
-        using tuple_t = typename itfc_t::tuple_t;
+        using tuple_t = typename std::tuple<Params...>;
         /// 定义消息结构，消息结构中包含了接收者和消息数据内容
         struct stMsgs{
             std::shared_ptr< itfc_t >   pt_dst__;   // 接收者
             std::shared_ptr< tuple_t >  m_data__;   // 消息内容
         };
 #endif
-        static_assert( std::is_base_of<itfc_t , private__::colleagueBase>::value , "" );
-
     protected:
         data_t                    m_colleague__;    // 同事表
 
@@ -164,7 +172,7 @@ namespace wheels { namespace dm {
 
             m_is_running__ = sw;
             if( sw ){
-                std::thread thd( std::bind( &mediator<itfc_t>::backend__ ,  this ) );
+                std::thread thd( std::bind( &mediator::backend__ ,  this ) );
                 thd.detach();
             }else{
                 std::unique_lock< std::mutex > lck( m_mutex__ );
@@ -186,6 +194,7 @@ namespace wheels { namespace dm {
          */
         template< typename ...PARAMS >
         void dispatch(std::shared_ptr< itfc_t > sender, PARAMS&& ...args ) {
+			static_assert( std::is_base_of<private__::colleagueBase , itfc_t >::value , "" );
             auto pt_tpl = std::make_shared< std::tuple<PARAMS...> >( std::forward<PARAMS>(args)... );
             std::unique_lock< std::mutex >  lck( m_mutex__ );
 
@@ -206,7 +215,12 @@ namespace wheels { namespace dm {
          */
         template< typename ...PARAMS >
         void dispatchTo(std::shared_ptr< itfc_t > to, PARAMS&& ...args ) {
-            auto it = m_colleague__.find( to );
+			static_assert( std::is_base_of<private__::colleagueBase , itfc_t >::value , "" );
+            auto it = std::find_if( m_colleague__.begin() , m_colleague__.end(), [=]( std::shared_ptr<itfc_t> ptr )->bool{
+				if( ptr.get() == to.get() ) return true;
+				return false;
+			} );
+			
             if( it != m_colleague__.end() ){
                auto pt_tpl = std::make_shared< std::tuple<PARAMS...> >( std::forward<PARAMS>(args)... );
                stMsgs msg = { to , pt_tpl };
@@ -222,11 +236,12 @@ namespace wheels { namespace dm {
          * @param args[ I ]， 消息内容
          */
         template< typename ...PARAMS >
-        void dispatchTo( std::vector< std::shared_ptr< itfc_t > > dests, PARAMS&& ...args ) {
+        void dispatchToDests( std::vector< std::shared_ptr< itfc_t > > dests, PARAMS&& ...args ) {
+			static_assert( std::is_base_of<private__::colleagueBase , itfc_t >::value , "" );
             auto pt_tpl = std::make_shared< std::tuple<PARAMS...> >( std::forward<PARAMS>(args)... );
 
             for( auto to : dests ){
-                auto it = m_colleague__.find( to );
+                auto it = std::find( m_colleague__.begin() , m_colleague__.end(), to );
                 if( it != m_colleague__.end() ){
                     stMsgs msg = { to , pt_tpl };
                     m_msgs__.push( msg );
@@ -244,6 +259,7 @@ namespace wheels { namespace dm {
          */
         template< typename ...PARAMS >
         void dispatch(std::shared_ptr< itfc_t > sender, PARAMS&& ...args ) {
+			static_assert( std::is_base_of<private__::colleagueBase , itfc_t >::value , "" );
             for (auto colleague : m_colleague__) {
                 if (colleague != sender) {
                     colleague->recv( std::forward<PARAMS>( args )...);
@@ -258,7 +274,8 @@ namespace wheels { namespace dm {
          */
         template< typename ...PARAMS >
         void dispatchTo(std::shared_ptr< itfc_t > to, PARAMS&& ...args ) {
-            auto it = m_colleague__.find( to );
+			static_assert( std::is_base_of<private__::colleagueBase , itfc_t >::value , "" );
+            auto it = std::find( m_colleague__.begin() , m_colleague__.end(), to );
             if( it != m_colleague__.end() ){
                 to->recv( std::forward<PARAMS>( args )...);
             }
@@ -271,9 +288,10 @@ namespace wheels { namespace dm {
          * @param args[ I ]， 消息内容
          */
         template< typename ...PARAMS >
-        void dispatchTo( std::vector< std::shared_ptr< itfc_t > > dests, PARAMS&& ...args ) {
+        void dispatchToDests( std::vector< std::shared_ptr< itfc_t > > dests, PARAMS&& ...args ) {
+			static_assert( std::is_base_of<private__::colleagueBase , itfc_t >::value , "" );
             for( auto to : dests ){
-                auto it = m_colleague__.find( to );
+                auto it = std::find( m_colleague__.begin() , m_colleague__.end(), to );
                 if( it != m_colleague__.end() ){
                     to->recv( std::forward<PARAMS>( args )...);
                 }
