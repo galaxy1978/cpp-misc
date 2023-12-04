@@ -59,7 +59,6 @@ public:
      * @brief 设置回调函数。在回调函数中进行适配操作
      * @param fun[ I ]，回调函数对象
      */
-    template< typename ...Params >
     void set( functor fun ){ m_callback__ = fun; }
     /**
      * @brief 执行请求操作
