@@ -116,6 +116,10 @@ namespace wheels
 #endif
 		}
 
+        operator bool(){
+			return __p_data != nullptr;
+		}
+
 		variant& operator=( const variant& b ){
 			__p_data = b.__p_data->clone();
 #if VARIANT_USE_TYPE_CHECK
