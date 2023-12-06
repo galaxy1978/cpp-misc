@@ -188,13 +188,16 @@ public:
 		if(m_is_running__ == false ) return false;
 		auto it = m_arcs__.find( m_current__ );
 		if( it != m_arcs__.end() ){
+			if( it->m_second.size() < 0 ) return false;
+			
+			auto item = it->m_second[ 0 ];
 			// 这个函数是没有参数条件的转换，主要针对自动转换的情况
 			// 先调用离开通知
-			call_leave__( it->m_second[0].m_from, std::is_arithmetic<CONDITION_DATA_TYPE>::value ? CONDITION_DATA_TYPE() : (CONDITION_DATA_TYPE)0.0 );
+			call_leave__( item.m_from, std::is_arithmetic<CONDITION_DATA_TYPE>::value ? CONDITION_DATA_TYPE() : (CONDITION_DATA_TYPE)0.0 );
 			// 再调用进入通知
-			call_ent__( it->m_second[0].m_to , std::is_arithmetic<CONDITION_DATA_TYPE>::value ? CONDITION_DATA_TYPE() : (CONDITION_DATA_TYPE)0.0 );
+			call_ent__( item.m_to , std::is_arithmetic<CONDITION_DATA_TYPE>::value ? CONDITION_DATA_TYPE() : (CONDITION_DATA_TYPE)0.0 );
 
-			m_current__ = it->m_second[ 0 ].m_to;
+			m_current__ = item.m_to;
 		}else{
 			return false;
 		}
