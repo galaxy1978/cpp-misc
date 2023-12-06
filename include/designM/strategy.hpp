@@ -78,7 +78,8 @@ namespace wheels
 			/**
 			 * @brief 针对所有的内容执行一次
 			 */
-			void call_each( Args&&... args ){
+			template< typename ...Params >
+			void call_each( Params&&... args ){
 				for( auto it = __m_strates.begin(); it != __m_strates.end(); ++it ){
 					it->second( std::forward<Args>(args)... );
 				}
@@ -89,7 +90,8 @@ namespace wheels
 			 * @param args[ IO ], 算法参数表
 			 * @exception 找不到合适的策略会抛出-1
 			 */
-			Ret call( const keyType& key , Args&&... args ){
+			template< typename ...Params >
+			Ret call( const keyType& key , Params&&... args ){
 				auto it = __m_strates.find( key );
 				if( it != __m_strates.end() ){
 					return it->second(std::forward<Args>(args)...);
@@ -108,63 +110,3 @@ namespace wheels
 		class strategy< keyType , funcType classType::*> : public strategy< keyType , std::function< funcType > >{};
 	}
 }
-/**
- // 策略内容方式1 , 继承同一接口方式策略项目
- class stra_base{
- virtual void callee( int a ) = 0;
- };
-
- class stra_a : public stra_base{
- virtual void callee( int a ) final{
- std::cout << a << std::endl;
- }
- };
-
- class stra_b : public stra_base{
- virtual void callee( int a ) final{
- std::cout << a * 10 << std::endl;
- }
- };
- stra_a   a;
- stra_b   b;
-   
- // 初始化
- strategy<int , void , int >  st;
- // 或者
- strategy< int , void(int) > st;
- // 或者
- strategy< int , decltype(&stra_base::callee) > st;
- 
- st.add( 0 , [&]( int param ){
- a.callee( param );
- });
- st.add( 1 , [&]( int param ){
- b.callee( param );
- });
-
- // 执行
- st.call( 0 , 14 );
- st.call( 1 , 27 );
- --------------------------------------------------------------------------------------------------------
- // 策略方式2 ， 非统一接口方式
- int stra_fun1( int a ){
-
- }
-
- int stra_fun2( int b ){
-
- }
-
- strategy<int , int , int >  st;
- st.add( 0 , [&]( int param )->int{
- stra_fun1( param );
- });
- st.add( 1 , [&]( int param )->int{
- stra_fun2( param );
- });
-
- // 执行
- int rst = st.call( 0 , 14 );
- rst = st.call( 1 , 27 );
-
-*/
