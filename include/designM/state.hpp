@@ -13,15 +13,16 @@
 #include <vector>
 
 #include "designM/mediator.hpp"
+
 namespace private__
 {
 	// 这是状态变化事件类型定义
 	enum class emEvent
 	{
 		EVT_ENT,	// 进入状态触发事件
-		EVT_LEAVE,  // 离开状态触发事件
-		EVT_READY,  // 模块就绪事件
-		EVT_END     // 运行到结束节点的时间
+		EVT_LEAVE,      // 离开状态触发事件
+		EVT_READY,      // 模块就绪事件
+		EVT_END         // 运行到结束节点的时间
 	};
 	// 状态节点定义，模板参数是状态标记类型
 	// 运行自定义自己需要的类型，比如分析网络协议可以使用uint8_t, 比如定义路灯状态可以使用自己的枚举
@@ -32,7 +33,6 @@ namespace private__
 		stStat( const STATE_TYPE& s ):m_state( s ){}
 	};
 	// 状态转换关系节点定义
-	
 	template< typename STATE_TYPE , typename CONDITON_DATA_TYPE >
 	struct stArc
 	{
@@ -66,7 +66,7 @@ public:
 	// stateData_t 是源节点，作为检索的key
 	// std::vector< stateData_t >，使用vector保存目标节点，因为一个源节点可能有多个目标节点状态
 	using arcData_t = std::map< stateData_t , std::vector< arc_t > >;
-
+protected:
 	// 使用中介者模式传递消息，参与者分成消息的生产者和消费者两个。生产者发出状态变化的四种消息
 	// 接收者进行响应的处理并对外调用回调函数进行具体事务的处理
 	class colleague;
@@ -164,7 +164,7 @@ public:
 	}
 	/**
 	 * @brief 启动。启动状态机
-	 * @param sw
+	 * @param sw[ I ] ， true开启状态机, false关闭状态机
 	 */
 	void start( bool sw ){
 		if( m_is_running__ == sw ){ return; }
@@ -175,8 +175,7 @@ public:
 			pt_mdt__->run( true );
 			m_current__ = m_start__;
 			// 发送就绪通知
-			pt_producer__->sendTo( pt_consumer__ , m_start__,  private__::emEvent::EVT_READY ,
-					       std::is_arithmetic<CONDITION_DATA_TYPE>::value?CONDITION_DATA_TYPE():(CONDITION_DATA_TYPE)0.0 );
+			pt_producer__->sendTo( pt_consumer__ , m_start__,  private__::emEvent::EVT_READY , std::is_arithmetic<CONDITION_DATA_TYPE>::value?CONDITION_DATA_TYPE():(CONDITION_DATA_TYPE)0.0 );
 		}else{ // 结束运行
 			pt_mdt__->run( false );
 		}
@@ -190,12 +189,12 @@ public:
 		auto it = m_arcs__.find( m_current__ );
 		if( it != m_arcs__.end() ){
 			// 这个函数是没有参数条件的转换，主要针对自动转换的情况
-			// 先调用离开
-			call_leave__( it->m_second[0], std::is_arithmetic<CONDITION_DATA_TYPE>::value ? CONDITION_DATA_TYPE() : (CONDITION_DATA_TYPE)0.0 );
-			// 再调用进入
-			call_ent__( it->m_second[0] , std::is_arithmetic<CONDITION_DATA_TYPE>::value ? CONDITION_DATA_TYPE() : (CONDITION_DATA_TYPE)0.0 );
+			// 先调用离开通知
+			call_leave__( it->m_second[0].m_from, std::is_arithmetic<CONDITION_DATA_TYPE>::value ? CONDITION_DATA_TYPE() : (CONDITION_DATA_TYPE)0.0 );
+			// 再调用进入通知
+			call_ent__( it->m_second[0].m_to , std::is_arithmetic<CONDITION_DATA_TYPE>::value ? CONDITION_DATA_TYPE() : (CONDITION_DATA_TYPE)0.0 );
 
-			m_current__ = it->m_second[ 0 ];
+			m_current__ = it->m_second[ 0 ].m_to;
 		}else{
 			return false;
 		}
@@ -220,8 +219,7 @@ public:
 					call_ent__( item.m_to , data );
 					// 执行结束通知
 					if( item.m_to == m_end__ ){
-						pt_producer__->sendTo( pt_consumer__ , m_end__,  private__::emEvent::EVT_END ,
-								       std::is_arithmetic<CONDITION_DATA_TYPE>::value?CONDITION_DATA_TYPE():(CONDITION_DATA_TYPE)0.0 );
+						pt_producer__->sendTo( pt_consumer__ , m_end__,  private__::emEvent::EVT_END , std::is_arithmetic<CONDITION_DATA_TYPE>::value?CONDITION_DATA_TYPE():(CONDITION_DATA_TYPE)0.0 );
 					}
 
 					m_current__ = item.m_to;
@@ -240,8 +238,8 @@ public:
 	}
 	/**
 	 * @brief 删除状态。接下来的是添加和删除节点和状态连接的操作
-	 * @param state
-	 * @return
+	 * @param state[ I ] , 状态数据
+	 * @return 成功操作返回true，否则返回false
 	 */
 	bool addState( const stateData_t& state ){
 		if(m_is_running__ == true ) return false;
@@ -275,9 +273,9 @@ public:
 	}
 	/**
 	 * @brief 添加转换。添加转换的时候增加转换条件
-	 * @param from
-	 * @param to
-	 * @param cnd
+	 * @param from[I]，起点状态
+	 * @param to[I]，终点状态
+	 * @param cnd[ I ]，转换条件回调函数，如果需要执行转换返回true
 	 */
 	void addArc( const stateData_t& from , const stateData_t& to , std::function< bool ( const CONDITION_DATA_TYPE& ) > cnd ){
 		if(m_is_running__ == true ) return;
@@ -294,9 +292,9 @@ public:
 		}
 	}
 	/**
-	 * @brief 移除转换
-	 * @param from
-	 * @param to
+	 * @brief 移除转换.
+	 * @param from[ I ], 弧起点
+	 * @param to[ I ], 弧终点
 	 */
 	void removeArc( const stateData_t& from , const stateData_t& to ){
 		if(m_is_running__ == true ) return;
