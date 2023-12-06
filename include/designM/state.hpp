@@ -188,7 +188,7 @@ public:
 		if(m_is_running__ == false ) return false;
 		auto it = m_arcs__.find( m_current__ );
 		if( it != m_arcs__.end() ){
-			if( it->m_second.size() < 0 ) return false;
+			if( it->m_second.size() == 0 ) return false;
 			
 			auto item = it->m_second[ 0 ];
 			// 这个函数是没有参数条件的转换，主要针对自动转换的情况
