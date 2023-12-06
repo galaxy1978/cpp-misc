@@ -5,24 +5,25 @@
  */
 
 #pragma once
+
 #include <type_traits>
 #include <memory>
 #include <unordered_set>
 #include <algorithm>
 #include <vector>
- 
+
 #if !defined( MEDIATOR_USE_TUPLE )
-#	define MEDIATOR_USE_TUPLE (1)
+#    define MEDIATOR_USE_TUPLE (1)
 #endif
 
 #if MEDIATOR_USE_TUPLE == 1
-#	include <tuple>
-#   include <thread>
-#	include <condition_variable>
-#   include <functional>
-#   include <mutex>
-#   include <queue>
-#   include <atomic>
+#    include <tuple>
+#    include <thread>
+#    include <condition_variable>
+#    include <functional>
+#    include <mutex>
+#    include <queue>
+#    include <atomic>
 #endif
 
 namespace private__
@@ -38,7 +39,6 @@ namespace dm {
 // 因为异步传递的时候数据内容需要进行排队，这要求能够有容器临时存储数据内容。考虑到模块的通用性和
 // 对消息结构的复杂性，所以使用std::tuple的方式。
 #if MEDIATOR_USE_TUPLE
-
 	template< typename MEDIATOR , typename ...PARAMS >
 	struct colleagueItfc : public private__::colleagueBase , public std::enable_shared_from_this<colleagueItfc<MEDIATOR , PARAMS...> >
 	{
@@ -127,9 +127,11 @@ namespace dm {
 		std::mutex                m_mutex__;
 	protected:
 		/**
-		 * @brief 后台处理线程。在这个线程中驱动接收处理
+		 * @brief 后台处理线程。
 		 */
 		void backend__(){
+			/// m_is_running__判断后台线程是否需要继续运行，逐个消息队列中读取数据消息内容，并调用目标的recv函数进行处理。如果消息表中没有
+			/// 内容则等候消息。
 			while( m_is_running__.load() ){
 				std::unique_lock< std::mutex > lck( m_mutex__ );
 
@@ -137,7 +139,6 @@ namespace dm {
 					auto item = m_msgs__.front();
 					item.pt_dst__->recv( *item.m_data__ );
 					m_msgs__.pop();
-
 				}else{
 					m_cnd_var__.wait( lck );
 				}
@@ -175,7 +176,7 @@ namespace dm {
 		/**
 		 * @brief 启动线程或者关闭线程
 		 * @param sw[ I ]
-		 * @return
+		 * @return 成功操作返回true
 		 */
 		bool run( bool sw ){
 			if( m_is_running__.load() == sw ) return false;
@@ -184,7 +185,8 @@ namespace dm {
 			if( sw ){
 				std::thread thd( std::bind( &mediator::backend__ ,  this ) );
 				thd.detach();
-			}else{
+			}else{ // 结束后台线程的时候先把运行标志设置为false，然后清理掉所有已经在排队的
+				// 消息；然后通知再等待的线程结束等待。
 				std::unique_lock< std::mutex > lck( m_mutex__ );
 				while( !m_msgs__.empty() ){
 					m_msgs__.pop();
@@ -205,6 +207,7 @@ namespace dm {
 		template< typename ...PARAMS >
 		void dispatch(itfc_t * sender, PARAMS&& ...args ) {
 			static_assert( std::is_base_of<private__::colleagueBase , itfc_t >::value , "" );
+			
 			auto pt_tpl = std::make_shared< std::tuple< typename std::decay<PARAMS>::type...> >( std::forward<PARAMS>(args)... );
 			std::unique_lock< std::mutex >  lck( m_mutex__ );
 
@@ -248,6 +251,9 @@ namespace dm {
 		template< typename ...PARAMS >
 		void dispatchToDests( std::vector< std::shared_ptr< itfc_t > > dests, PARAMS&& ...args ) {
 			static_assert( std::is_base_of<private__::colleagueBase , itfc_t >::value , "" );
+			// 1  构造std::tuple对象，tuple的类型需要使用PARAMS进行推导，但是由于PARAMS是万能应用可能导致推导内容不能满足实际传递过来的内容完全匹配
+			// 来构造tuple，所以使用std::decay移除修饰内容后再构造shared_ptr。
+			// 2  使用shared_ptr方便消息传递过程里面重复的对象构造和内存拷贝。
 			auto pt_tpl = std::make_shared< std::tuple<typename std::decay<PARAMS>::type...> >( std::forward<PARAMS>(args)... );
 
 			for( auto to : dests ){
@@ -261,7 +267,7 @@ namespace dm {
 			m_cnd_var__.notify_one();
 		}
 #else
-        // 在不适用std::tuple的情况下没有做异步处理，定义这个方法以实现代码层的兼容。
+		// 在不适用std::tuple的情况下没有做异步处理，定义这个方法以实现代码层的兼容。
 		bool run( bool ){ return true; }
 		/**
 		 * @brief 转发消息。通常情况下dispatch函数在colleagueItfc的子类
