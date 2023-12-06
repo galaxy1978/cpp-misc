@@ -100,13 +100,5 @@ namespace wheels
 				throw std::runtime_error( "branch is not exist" );
 			}
 		};
-		
-		// 用来支持从普通函数指针来推导接口类型
-		template< typename keyType , typename Ret , typename ...Args >
-		class strategy< keyType , Ret (Args...) > : public strategy<keyType , std::function<Ret (Args...)> >{};
-		
-		// 用来支持从类成员函数对到接口类型
-		template<typename keyType , typename classType , typename funcType >
-		class strategy< keyType , funcType classType::*> : public strategy< keyType , std::function< funcType > >{};
 	}
 }
