@@ -261,6 +261,8 @@ namespace dm {
 			m_cnd_var__.notify_one();
 		}
 #else
+        // 在不适用std::tuple的情况下没有做异步处理，定义这个方法以实现代码层的兼容。
+		bool run( bool ){ return true; }
 		/**
 		 * @brief 转发消息。通常情况下dispatch函数在colleagueItfc的子类
 		 *    中的send函数中调用
