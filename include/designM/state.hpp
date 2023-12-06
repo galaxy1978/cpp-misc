@@ -13,9 +13,7 @@
 #include <vector>
 
 #include "designM/mediator.hpp"
-// 这是一个状态模式的实现，利用中介者模式和外部进行异步互动
-// 也就是利用上次视屏的中介模式的异步消息传递方式，将状态变化传递出去
-// 下来看具体实现
+
 namespace private__
 {
 	// 这是状态变化事件类型定义
@@ -34,14 +32,11 @@ namespace private__
 		STATE_TYPE   m_state;
 		stStat( const STATE_TYPE& s ):m_state( s ){}
 	};
-	// 状态转换关系节点定义
-	
 	template< typename STATE_TYPE , typename CONDITON_DATA_TYPE >
 	struct stArc
 	{
 		STATE_TYPE  m_from;      // 来源状态
 		STATE_TYPE  m_to;        // 目标状态
-		// 转换条件处理函数，如果转换条件满足则返回true
 		std::function< bool ( const CONDITON_DATA_TYPE& ) >   m_condition;
 
 		stArc( const STATE_TYPE& from , const STATE_TYPE& to ,std::function< bool ( const CONDITON_DATA_TYPE& ) > fun ):
@@ -53,14 +48,10 @@ namespace private__
 
 namespace wheels{
 	namespace dm{
-// 这里是状态机的定义
-// 第一个参数是状态类型，第二个是转换条件数据类型
 		template< typename STATE_TYPE , typename CONDITION_DATA_TYPE >
 		class state
 		{
 		public:
-			// 检查转换条件是否符合要求，这里要求满足可以进行数学结算的类型
-			// 或者是有默认构造的类
 			static_assert( std::is_arithmetic<CONDITION_DATA_TYPE>::value ||
 				       ( std::is_class<CONDITION_DATA_TYPE>::value && std::is_default_constructible<CONDITION_DATA_TYPE>::value ) , "" );
 
@@ -69,13 +60,9 @@ namespace wheels{
 			// 针对状态数据进行别名处理
 			using state_t = private__::stStat< stateData_t >;
 			using arc_t = private__::stArc< stateData_t , CONDITION_DATA_TYPE >;
-			// 用map保存节点的转换关系
-			// stateData_t 是源节点，作为检索的key
-			// std::set< stateData_t >，使用set保存目标节点，因为一个源节点可能有多个目标节点状态
+
 			using arcData_t = std::map< stateData_t , std::vector< arc_t > >;
 
-			// 使用中介者模式传递消息。利用中介者模式，如果不了解这个模块的可以参考一下
-			// 以前关于中介者模式的视频
 			class colleague;
 			using mediator_t = wheels::dm::mediator< colleague , stateData_t , private__::emEvent , CONDITION_DATA_TYPE>;
 	
@@ -91,7 +78,6 @@ namespace wheels{
 				 * @brief 重载recv函数，并在其中针对tuple解包，调用回调函数通知状态变化
 				 * @param tpl[ I ]，
 				 */
-				// 实现消息接收接口。消息传递使用了std::tuple，这里需要根据具体应用将tuple内容解出来
 				virtual void recv( const std::tuple< stateData_t , private__::emEvent , CONDITION_DATA_TYPE >& tpl ) final{
 					if( m_cb__ ){
 						// 调用实际的处理函数
