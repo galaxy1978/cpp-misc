@@ -62,8 +62,7 @@ public:
 	// 针对状态数据进行别名处理
 	using state_t = private__::stStat< stateData_t >;
 	using arc_t = private__::stArc< stateData_t , CONDITION_DATA_TYPE >;
-	// 用map保存节点的转换关系
-	// stateData_t 是源节点，作为检索的key
+	// 用map保存节点的转换关系，stateData_t 是源节点，作为检索的key
 	// std::vector< stateData_t >，使用vector保存目标节点，因为一个源节点可能有多个目标节点状态
 	using arcData_t = std::map< stateData_t , std::vector< arc_t > >;
 protected:
@@ -92,7 +91,7 @@ protected:
 			}
 		}
 	};
-
+	// 状态节点表类型
 	using stateTbl_t = std::map< stateData_t , private__::stStat< stateData_t > >;
 protected:
 	stateTbl_t                          m_stats__;           // 状态节点表
@@ -187,20 +186,17 @@ public:
 	bool execute(){
 		if(m_is_running__ == false ) return false;
 		auto it = m_arcs__.find( m_current__ );
-		if( it != m_arcs__.end() ){
-			if( it->m_second.size() == 0 ) return false;
-			
-			auto item = it->m_second[ 0 ];
-			// 这个函数是没有参数条件的转换，主要针对自动转换的情况
-			// 先调用离开通知
-			call_leave__( item.m_from, std::is_arithmetic<CONDITION_DATA_TYPE>::value ? CONDITION_DATA_TYPE() : (CONDITION_DATA_TYPE)0.0 );
-			// 再调用进入通知
-			call_ent__( item.m_to , std::is_arithmetic<CONDITION_DATA_TYPE>::value ? CONDITION_DATA_TYPE() : (CONDITION_DATA_TYPE)0.0 );
+		if( it == m_arcs__.end() ){ return false; }
 
-			m_current__ = item.m_to;
-		}else{
-			return false;
-		}
+		if( it->m_second.size() == 0 ) return false;
+			
+		auto item = it->m_second[ 0 ];
+		// 这个函数是没有参数条件的转换，主要针对自动转换的情况
+		// 先调用离开通知
+		call_leave__( item.m_from, std::is_arithmetic<CONDITION_DATA_TYPE>::value ? CONDITION_DATA_TYPE() : (CONDITION_DATA_TYPE)0.0 );
+		m_current__ = item.m_to;
+                // 再调用进入通知
+		call_ent__( item.m_to , std::is_arithmetic<CONDITION_DATA_TYPE>::value ? CONDITION_DATA_TYPE() : (CONDITION_DATA_TYPE)0.0 );
 
 		return true;
 	}
@@ -211,32 +207,28 @@ public:
 	 */
 	bool execute( const CONDITION_DATA_TYPE& data ){
 		if(m_is_running__ == false ) return false;
-
+		// 查找满足其实节点条件的弧表
 		auto it = m_arcs__.find( m_current__ );
-		if( it != m_arcs__.end() ){
-			bool find_dst = false;
-			for( auto item : it->second ){
-				if( item.m_condition( data ) ){
-					find_dst = true;
-					call_leave__( item.m_from , data );
-					call_ent__( item.m_to , data );
-					// 执行结束通知
-					if( item.m_to == m_end__ ){
-						pt_producer__->sendTo( pt_consumer__ , m_end__,  private__::emEvent::EVT_END , std::is_arithmetic<CONDITION_DATA_TYPE>::value?CONDITION_DATA_TYPE():(CONDITION_DATA_TYPE)0.0 );
-					}
-
-					m_current__ = item.m_to;
-					break;
-				}
+		if( it == m_arcs__.end() ) return false;
+		
+		// 遍历所有的弧找到第一个满足条件的执行转换操作。这里需要特别注意的是在一次转换操作中必须保证
+		// 只能有一条满足转换条件的路径，否则第二条路径将永远不会访问到，并且这样不能满足明确转换目标。
+		for( auto item : it->second ){
+			if( !item.m_condition( data ) ){ continue; }
+			// 通知离开起始节点和到达目标节点
+			call_leave__( item.m_from , data );
+			// 切换当前状态
+			m_current__ = item.m_to;
+			// 通知到达目标节点
+			call_ent__( item.m_to , data );
+			// 执行结束通知
+			if( item.m_to == m_end__ ){
+				pt_producer__->sendTo( pt_consumer__ , m_end__,  private__::emEvent::EVT_END , std::is_arithmetic<CONDITION_DATA_TYPE>::value?CONDITION_DATA_TYPE():(CONDITION_DATA_TYPE)0.0 );
 			}
-
-			if( find_dst == false ){
-				return false;
-			}
-		}else{
-			return false;
+					
+			break;
 		}
-
+			
 		return true;
 	}
 	/**
