@@ -1,7 +1,11 @@
 #include <iostream>
 #include <string>
+#include <vector>
+
 #include "designM/vistor.hpp"
 
+using namespace wheels;
+using namespace dm;
 // 自定义数据类型
 struct Data {
   Data(int value) : value(value) {}
