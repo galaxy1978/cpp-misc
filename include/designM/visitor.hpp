@@ -18,15 +18,15 @@ public:
 protected:
 	funcTan_t    m_funcs__;
 public:
-    vistor(){}
-    virtual ~vistor(){}
+	vistor(){}
+	virtual ~vistor(){}
 	/**
 	 * @brief 添加处理方法
 	 * @param name[ I ], 方法名称
 	 * @param func,方法函数对象
 	 * @return 如果成功添加方法，返回true，否则返回false
 	*/
-    bool addMethod( const std::string& name , func_t func ){
+	bool addMethod( const std::string& name , func_t func ){
 		auto rst = m_funcs__.insert( std::make_pair( name , func ) );
 		return rst.second;
 	}
@@ -35,9 +35,9 @@ public:
 	 * @param 方法名称
 	 * @return 如果没有找到方法，返回false,否则删除方法返回true
 	*/
-    bool eraseMethod( const std::string& name ){
+	bool eraseMethod( const std::string& name ){
 		auto it = m_funcs__.find( name );
-		if( it ){
+		if( it != m_funcs__.end() ){
 			m_funcs__.erase( it );
 			return true;
 		}
@@ -52,7 +52,7 @@ public:
 		if( it != m_funcs__.end() ){
 			return it->second;
 		}
-		return {};
+		throw std::runtime_error( "指定索引的方法不存在" );
 	}
 	/**
 	 * @brief 调用方法处理数据
@@ -61,7 +61,7 @@ public:
 	*/
 	RET call( const std::string& name, dataItem_t& data ){
 		auto it = m_funcs__.find( name );	
-		if( it ){
+		if( it != m_funcs__.end() ){
 			return it->second( data );
 		}
 		return {};
@@ -74,7 +74,9 @@ public:
 	template< typename InputIterator >
 	void callEach( const std::string& name , InputIterator begin , InputIterator end ){
 		auto it = m_funcs__.find( name );
-		
+		if( it == m_funcs__.end() ){ 
+			throw std::runtime_error( "指定索引的方法不存在" );
+		}
 		for( auto it1 = begin; it1 != end; ++it1 ){
 			it->second( *it1 );
 		}
@@ -83,7 +85,8 @@ public:
 	 * @brief 检查是否存在指定的方法
 	*/
 	bool has( const std::string& name ){
-		auto it = m_funcs__.find( name );	
+		auto it = m_funcs__.find( name );
+		
 		return it != m_funcs__.end();
 	}
 };
