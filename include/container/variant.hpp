@@ -1,8 +1,9 @@
 /**
  * @brief 任意类型数据的容器
- * @version 1.1
+ * @version 1.0
  * @author 宋炜
- * @date 2023-5-8 ~ 2023-11-17
+ * @date 2023-5-8 ~ 2023-12-08
+ *   2023-12-08 FIXED 改善了原始数据需要有默认构造函数才能够进行variant处理
  */
 #pragma once
 
@@ -12,6 +13,7 @@
 #include <type_traits>
 #include <typeinfo>
 #include <mutex>
+#include <memory>
 #include <stdexcept>
 
 // 默认开启类型检查。
@@ -42,16 +44,17 @@ namespace wheels
 		public:
 			using data_t = typename std::remove_pointer< typename std::decay<T>::type >::type;
 		private:
-			T    m_data__;    // 实际数据内容
+			std::shared_ptr< T >    m_data__;    // 实际数据内容
 		public:
 			variant__(){}
-			variant__( const T& value ) : m_data__(value){}
+			variant__( const T& value ) : m_data__(std::make_shared<T>(value)){}
 			virtual ~variant__(){}
 			
-			T get(){ return m_data__; }
+			T get(){ return *m_data__; }
 
 			void set( const T& b ){
-				m_data__ = b;
+				if( !m_data__ ){ m_data__ = std::make_shared< T >( b );}
+				*m_data__ = b;
 			}
 			/**
 			 * @brief 拷贝操作。主要用于外部的拷贝构造、赋值拷贝。
@@ -62,7 +65,7 @@ namespace wheels
 				
 				try{
 					ret = new variant__< T >();
-                    ret->m_data__ = std::move( m_data__ );
+                    ret->m_data__ = m_data__;
 				}catch( std::bad_alloc& e ){
 					ret = nullptr;
 				}
@@ -81,61 +84,61 @@ namespace wheels
 	class variant{
             
 	private:
-		private__::variant_base__    * __p_data;
+		private__::variant_base__ *    p_data__;
 #if VARIANT_USE_TYPE_CHECK
-		std::string                    __m_typeinfo;    // 保存数据类型描述
+		std::string                    m_typeinfo__;    // 保存数据类型描述
 #endif
 		
-		mutable std::mutex             __m_mutex;     //
+		mutable std::mutex             m_mutex__;     //
 	private:
 		
 	public:
-		variant():__p_data( nullptr ){}		
+		variant():p_data__( nullptr ){}		
 		virtual ~variant(){
-			if( __p_data ){
-				delete __p_data;
+			if( p_data__ ){
+				delete p_data__;
 			}
 		}
 
-		variant( const variant& b ) : __p_data( nullptr )
+		variant( const variant& b ) : p_data__( nullptr )
 		{
-			__p_data = b.__p_data->clone();
+			p_data__ = b.p_data__->clone();
 #if VARIANT_USE_TYPE_CHECK
-			__m_typeinfo = b.__p_data->typeInfo();
+			m_typeinfo__ = b.p_data__->typeInfo();
 #endif
 		}
-		variant( variant&& b ): __p_data( nullptr )
+		variant( variant&& b ): p_data__( nullptr )
 		{
-			auto * __p_temp = __p_data;
-			__p_data = b.__p_data;
-			b.__p_data = __p_temp;
+			auto * __p_temp = p_data__;
+			p_data__ = b.p_data__;
+			b.p_data__ = __p_temp;
 #if VARIANT_USE_TYPE_CHECK
-			auto __p_t = __m_typeinfo;
-			__m_typeinfo = b.__m_typeinfo;
-			b.__m_typeinfo = __p_t;
+			auto __p_t = m_typeinfo__;
+			m_typeinfo__ = b.m_typeinfo__;
+			b.m_typeinfo__ = __p_t;
 #endif
 		}
 
-        operator bool(){
-			return __p_data != nullptr;
+		operator bool(){
+			return p_data__ != nullptr;
 		}
-
+		
 		variant& operator=( const variant& b ){
-			__p_data = b.__p_data->clone();
+			p_data__ = b.p_data__->clone();
 #if VARIANT_USE_TYPE_CHECK
-			__m_typeinfo = b.__p_data->typeInfo();
+			m_typeinfo__ = b.p_data__->typeInfo();
 #endif
 			return *this;
 		}
 
 		variant& operator=( variant&& b ){
-			auto * __p_temp = __p_data;
-			__p_data = b.__p_data;
-			b.__p_data = __p_temp;
+			auto * __p_temp = p_data__;
+			p_data__ = b.p_data__;
+			b.p_data__ = __p_temp;
 #if VARIANT_USE_TYPE_CHECK
-			auto __p_t = __m_typeinfo;
-			__m_typeinfo = b.__m_typeinfo;
-			b.__m_typeinfo = __p_t;
+			auto __p_t = m_typeinfo__;
+			m_typeinfo__ = b.m_typeinfo__;
+			b.m_typeinfo__ = __p_t;
 #endif
 			return *this;
 		}
@@ -165,19 +168,19 @@ namespace wheels
 		static variant make( const dataType& data ){
 			variant  ret;
 #if VARIANT_USE_TYPE_CHECK
-			ret.__m_typeinfo = typeid( dataType ).name();
+			ret.m_typeinfo__ = typeid( dataType ).name();
 #endif			
-			ret.__p_data = new private__::variant__< dataType >( data );
+			ret.p_data__ = new private__::variant__< dataType >( data );
 			return ret ;
 		}
 
 		template<typename dataType >
 		dataType get( )const{
-			std::lock_guard< std::mutex > lock( __m_mutex );
+			std::lock_guard< std::mutex > lock( m_mutex__ );
 #if VARIANT_USE_TYPE_CHECK
-			assert( __m_typeinfo == typeid( dataType ).name() );
+			assert( m_typeinfo__ == typeid( dataType ).name() );
 #endif
-			private__::variant__<dataType>  * p = static_cast< private__::variant__<dataType> *>( __p_data );
+			private__::variant__<dataType>  * p = static_cast< private__::variant__<dataType> *>( p_data__ );
 			if( !p ){
 				throw std::runtime_error( "data empty" );
 			}
@@ -195,24 +198,27 @@ namespace wheels
 		 */
 		template< typename dataType >
 		bool is(){
-		      return (__m_typeinfo == typeid( dataType ).name() );
-	    }
+		      return (m_typeinfo__ == typeid( dataType ).name() );
+		}
 		
 		/**
 		 * @brief 指定数据
 		 */
 		template< typename dataType >
 		void set( const dataType& data ){
-			std::lock_guard< std::mutex > lock( __m_mutex );
+			std::lock_guard< std::mutex > lock( m_mutex__ );
 #if VARIANT_USE_TYPE_CHECK
-			assert( __m_typeinfo == typeid( dataType ).name() );
+			assert( m_typeinfo__ == typeid( dataType ).name() );
 #endif
-			private__::variant__<dataType>  * p = static_cast< private__::variant__<dataType>* >( __p_data );
+			private__::variant__<dataType>  * p = static_cast< private__::variant__<dataType>* >( p_data__ );
 			if( p ){
 				return p->set( data );
 			}else{
 				throw std::runtime_error( "数据内存错误" );
 			}
 		}
+
+				
 	};
+
 }
