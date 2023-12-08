@@ -1,6 +1,6 @@
 /**
  * @brief 享元模式实现。支持多个不同的类型的享元同时管理；线程安全；支持任意参数的构造函数；
- * @version 1.1
+ * @version 1.0
  * @author 宋炜
  * @date 2023-6-12 ~ 2023-12-8
  *   2023-12-8 改变了内部实现方式，使用wheels::variant来保存数据内容。
@@ -71,9 +71,6 @@ namespace wheels{namespace dm {
 		size_t count(){ return m_itfcs__.size(); }
 	    /**
 	     * @brief 获取享元对象引用
-	     * @tparam rawT
-	     * @param name
-	     * @return 
 	     */
 	    wheels::variant 
 		get( const idType& name ) const{
@@ -86,6 +83,19 @@ namespace wheels{namespace dm {
 				
 		    return {};
 	    }
+		
+		wheels::variant 
+		operator[](const idType& name){
+			auto it = m_itfcs__.find( name );
+		    if( it != m_itfcs__.end() ){
+			    return it->second;
+		    }
+			
+			return {};
+		}
+		
+		void erase( iterator it ){ m_itfcs__.erase( it ); }
+		void erase( iterator b , iterator e ){ m_itfcs__.erase( b , e ); }
 		
 		iterator begin(){ return m_itfcs__.begin(); }
 		iterator end(){ return m_itfcs__.end(); }
