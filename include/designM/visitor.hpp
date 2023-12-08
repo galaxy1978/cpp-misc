@@ -27,21 +27,19 @@ public:
 	 * @return 如果成功添加方法，返回true，否则返回false
 	*/
     bool addMethod( const std::string& name , func_t func ){
-		// 这个函数添加数据的访问方法，也就是根据实际需要可以动态的添加或者移除
-		// 数据的处理方法
 		auto rst = m_funcs__.insert( std::make_pair( name , func ) );
 		return rst.second;
 	}
 	/**
-	 * @brief 移除方法。同样的，可以动态移除方法
+	 * @brief 移除方法
 	 * @param 方法名称
 	 * @return 如果没有找到方法，返回false,否则删除方法返回true
 	*/
     bool eraseMethod( const std::string& name ){
 		auto it = m_funcs__.find( name );
-		if( it != m_funcs__.end() ){
+		if( it ){
 			m_funcs__.erase( it );
-			return true; 
+			return true;
 		}
 		
 		return false;
@@ -63,7 +61,7 @@ public:
 	*/
 	RET call( const std::string& name, dataItem_t& data ){
 		auto it = m_funcs__.find( name );	
-		if( it != m_funcs__.end() ){
+		if( it ){
 			return it->second( data );
 		}
 		return {};
@@ -82,7 +80,7 @@ public:
 		}
 	}
 	/**
-	 * @brief 检查是否存在指定的方法。最后这个是判断是否存在指定名称的方法。
+	 * @brief 检查是否存在指定的方法
 	*/
 	bool has( const std::string& name ){
 		auto it = m_funcs__.find( name );	
