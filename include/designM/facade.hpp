@@ -7,8 +7,34 @@
 
 #pragma once
 
+#include <type_traits>
 #include <functional>
 
+#if !defined( FACADE_USE_INHERIT )
+#	define FACADE_USE_INHERIT  (0)
+#endif
+
+#if FACADE_USE_INHERIT == 1
+namespace wheels{namespace dm{
+	template <typename retType, typename... subTypes>
+	struct facade{};
+
+	template <typename retType, typename subType1, typename... subTypes>
+	struct facade<retType, subType1, subTypes...> : public subType1, public facadeInh<retType, subTypes...>
+	{
+	};
+
+	template <typename retType>
+	struct facade<retType>
+	{
+		template <typename Func_t , typename... Args>
+		retType run( Func_t func , Args&&... args )
+		{
+			return func(this , std::forward<Args>(args)...);
+		}
+	};
+}}
+#else 
 namespace facade_private__ {
     template < typename itfcType , typename... implType >
     struct TYPE_CHK_HELPER__{};
@@ -24,6 +50,16 @@ namespace facade_private__ {
 }
 
 namespace wheels{ namespace dm {
+
+#define FACADE_START_DECLARE_SUB_ITFC( name ) \
+struct name{ \
+	virtual ~name(){}
+
+#define FACADE_END_DECLARE_SUB_ITFC  };
+
+#define FACADE_ADD_ITFC( RET , NAME , ... ) \
+virtual RET NAME( __VA_ARGS__ ) = 0;
+
 
 template< typename itfcType ,  typename... subTypes >
 class facade
@@ -77,8 +113,8 @@ public:
         m_subs__.erase( b , e );
     }
 
-    template< typename ...Params >
-    void run(std::function< void ( itfc_t * , Params&&... )> fun , Params&&... args) {
+    template< typename Func_t , typename ...Params >
+    void run( Func_t fun , Params&&... args) {
 		for( int i = 0; i < sizeof...( subTypes ); i ++ ){
 			if( m_subs__[ i ] != nullptr ){
                 fun( m_subs__[ i ] , std::forward<Params>(args )...);
@@ -87,3 +123,4 @@ public:
     }
 };
 }}
+#endif
