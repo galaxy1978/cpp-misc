@@ -24,20 +24,10 @@ namespace wheels{namespace dm {
 	};
 
 	#define DECLARE_PROXY_ITFC( name )    \
-	struct name : public private__::itfcBase{
+	struct name {
 		
-	#define PROXY_ITFC_MTD( ret , name )   virtual ret name() = 0;
-	#define PROXY_ITFC_MTD_1( ret , name , param1 ) virtual ret name( param1 ) = 0;
-	#define PROXY_ITFC_MTD_2( ret , name , param1 , param2 ) virtual ret name( param1 , param2) = 0;
-	#define PROXY_ITFC_MTD_3( ret , name , param1 , param2 , param3 ) virtual ret name( param1 , param2 , param3) = 0;
-	#define PROXY_ITFC_MTD_4( ret , name , param1 , param2 , param3 , param4 ) virtual ret name( param1 , param2 , param3 , param4) = 0;
-	#define PROXY_ITFC_MTD_5( ret , name , param1 , param2 , param3 , param4 , param5) virtual ret name( param1 , param2 , param3 , param4 , param5) = 0;
-	#define PROXY_ITFC_MTD_6( ret , name , param1 , param2 , param3 , param4 , param5, param6 ) virtual ret name( param1 , param2 , param3 , param4 , param5, param6) = 0;
-	#define PROXY_ITFC_MTD_7( ret , name , param1 , param2 , param3 , param4 , param5, param6 , param7 ) virtual ret name( param1 , param2 , param3 , param4 , param5, param6 , param7) = 0;
-	#define PROXY_ITFC_MTD_8( ret , name , param1 , param2 , param3 , param4 , param5, param6 , param7, param8) virtual ret name( param1 , param2 , param3 , param4 , param5, param6 , param7, param8) = 0;
-	#define PROXY_ITFC_MTD_9( ret , name , param1 , param2 , param3 , param4 , param5, param6 , param7, param8, param9) virtual ret name( param1 , param2 , param3 , param4 , param5, param6 , param7, param8, param9) = 0;
-	#define PROXY_ITFC_MTD_10( ret, name , param1 , param2 , param3 , param4 , param5, param6 , param7, param8, param9 , param10 ) virtual ret name( param1 , param2 , param3 , param4 , param5, param6 , param7, param8, param9 , param10) = 0;
-	
+	#define PROXY_ITFC_MTD( ret , name , ... )   virtual ret name(  __VA_ARGS__ ) = 0;
+
 	#define END_PROXY_ITFC   };
 	
 	template< typename ITFC_TYPE , typename CONCREATE_TYPE >
@@ -104,30 +94,3 @@ namespace wheels{namespace dm {
 		}
 	};
 }}
-
- // 使用方法：
-/*	
-	using itfc = proxyItfc< int , const std::string& >;
-	
-	class abc{
-	public:
-			int do( const std::string& a , int b ){}
-	};
-	
-	
-	class myProxy : public proxy< itfc , abc >{
-		virtual int agent( const std::string& str ) override{
-			int param1 = 0;
-			param1 = 12;
-			
-			// ... ... 执行其他操作
-			
-			// 代理到具体类中
-			auto ptr = get()__;
-			if( ptr ){
-				ptr->do( str , 12 );
-			}
-			return 0;
-		}
-	};
-*/
