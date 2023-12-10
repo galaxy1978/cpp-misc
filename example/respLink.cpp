@@ -31,12 +31,10 @@ int main() {
     link.push_back(&impl2);
 
     link.request(123 , 789);
-
+	
+	link.requestCallback( []( respItfc * item , int a,  int b )->bool{
+		std::cout << "call in lambda function" << std::endl;
+		return item->operation( a , b );
+	} , 123 , 789 );
     return 0;
 }
-
-// 运行结果
-/*
-Implementation1: 123 data b: 789
-Implementation2: 123 data b: 789
-*/
