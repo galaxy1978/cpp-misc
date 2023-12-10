@@ -24,11 +24,11 @@ namespace wheels{namespace dm {
 	};
 
 	#define DECLARE_PROXY_ITFC( name )    \
-	struct name {
+	struct name : public private__:: itfcBase{
 		
 	#define PROXY_ITFC_MTD( ret , name , ... )   virtual ret name(  __VA_ARGS__ ) = 0;
 
-	#define END_PROXY_ITFC   };
+	#define END_PROXY_ITFC()   };
 	
 	template< typename ITFC_TYPE , typename CONCREATE_TYPE >
 	class proxy : public ITFC_TYPE
@@ -36,14 +36,12 @@ namespace wheels{namespace dm {
 	public:
 		using itfc_t = typename std::remove_pointer< typename std::decay< ITFC_TYPE >::type >::type;
 		using concrete_t  = typename std::remove_pointer< typename std::decay< CONCREATE_TYPE > :: type > :: type;
-		
-		static_assert( std::is_base_of<itfc_t , private__::itfcBase >::value , "" );
 	protected:
 		std::shared_ptr< concrete_t > pt_cncrt__;
 
 	protected:
 		std::shared_ptr< concrete_t > get__(){ 
-			std::weak_ptr ret( pt_cncrt__ );
+			std::weak_ptr<concrete_t> ret( pt_cncrt__ );
 			if( !ret.expired() ){
 				return ret.lock();
 			}
@@ -78,17 +76,23 @@ namespace wheels{namespace dm {
 		 * @param cb, 实际的代理处理函数对象，这个函数对象的参数也是可变的
 		 * @return 返回std::future对象
 		*/
-		template< typename RET , typename ...PARAMS >
-        std::future< RET > agentCall
-            (
-                std::function< RET (std::shared_ptr< concrete_t > , PARAMS&&... ) > cb ,
-                PARAMS&& ...args
-            )
+		template< typename Func_t , typename ...PARAMS >
+        auto agentCall( Func_t&& cb , PARAMS&& ...args  ) 
+			-> std::future<
+				typename std::result_of<
+						Func_t(std::shared_ptr< concrete_t > ,PARAMS&&...)
+					>::type
+			   >
         {
-			std::packaged_task< RET ( PARAMS&&... ) > fun( cb );
-            auto ret = fun.get_future();
+			using return_type = typename std::result_of<
+					Func_t( std::shared_ptr< concrete_t > , PARAMS&&...)
+					>::type;
+			
+			std::packaged_task< return_type() > task(std::bind(std::forward<Func_t>(cb), pt_cncrt__ , std::forward<PARAMS>(args)...) );
+			
+            auto ret = task.get_future();
 
-            std::thread thd( std::move( fun ) , get__() , std::forward<PARAMS>(args)... );
+            std::thread thd( std::move( task ) );
 			thd.detach();
 			return ret;
 		}
