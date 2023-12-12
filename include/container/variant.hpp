@@ -1,9 +1,8 @@
 /**
  * @brief 任意类型数据的容器
- * @version 1.0
+ * @version 1.1
  * @author 宋炜
- * @date 2023-5-8 ~ 2023-12-08
- *   2023-12-08 FIXED 改善了原始数据需要有默认构造函数才能够进行variant处理
+ * @date 2023-5-8 ~ 2023-12-12
  */
 #pragma once
 
@@ -15,6 +14,9 @@
 #include <mutex>
 #include <memory>
 #include <stdexcept>
+#if defined( __GNUC__ )
+#   include <cxxabi.h>
+#endif
 
 // 默认开启类型检查。
 // 如果要关闭可以在工程文件中添加自己的定义, 比如在Makefile中增加 -DVARIANT_USE_TYPE_CHECK=0
@@ -74,7 +76,11 @@ namespace wheels
 			}
 #if VARIANT_USE_TYPE_CHECK
 			virtual const std::string typeInfo() const final{
-				return std::string( typeid( T ).name() );
+#if defined( __GNUC__ )
+                return std::string( abi::__cxa_demangle( typeid( T ).name(), 0, 0, 0) );
+#elif defined( _MSC_VER )
+                return std::string( typeid( T ).name() );
+#endif
 			}
 #endif
 		};
@@ -168,7 +174,11 @@ namespace wheels
 		static variant make( const dataType& data ){
 			variant  ret;
 #if VARIANT_USE_TYPE_CHECK
-			ret.m_typeinfo__ = typeid( dataType ).name();
+#if defined( __GNUC__ )
+            ret.m_typeinfo__ = abi::__cxa_demangle( typeid( dataType ).name(), 0, 0, 0);
+#elif defined( _MSC_VER )
+            ret.m_typeinfo__ = typeid( dataType ).name();
+#endif
 #endif			
 			ret.p_data__ = new private__::variant__< dataType >( data );
 			return ret ;
@@ -177,13 +187,21 @@ namespace wheels
 		template<typename dataType >
 		dataType get( )const{
 			std::lock_guard< std::mutex > lock( m_mutex__ );
+            private__::variant__<dataType>  * p = static_cast< private__::variant__<dataType> *>( p_data__ );
+            if( !p ){
+                throw std::runtime_error( "数据内容无效" );
+            }
+
 #if VARIANT_USE_TYPE_CHECK
-			assert( m_typeinfo__ == typeid( dataType ).name() );
+#if defined( __GNUC__ )
+            auto str = abi::__cxa_demangle( typeid( dataType ).name(), 0, 0, 0);
+#elif defined( _MSC_VER )
+            auto str = typeid( dataType ).name();
 #endif
-			private__::variant__<dataType>  * p = static_cast< private__::variant__<dataType> *>( p_data__ );
-			if( !p ){
-				throw std::runtime_error( "data empty" );
-			}
+            if( m_typeinfo__ != str ){
+                throw std::runtime_error( "数据类型不匹配" );
+            }
+#endif
 
 			return p->get();
 		}
@@ -198,7 +216,11 @@ namespace wheels
 		 */
 		template< typename dataType >
 		bool is(){
-		      return (m_typeinfo__ == typeid( dataType ).name() );
+#if defined( __GNUC__ )
+              return (m_typeinfo__ == abi::__cxa_demangle( typeid( dataType ).name(), 0, 0, 0) );
+#elif defined( _MSC_VER )
+              return (m_typeinfo__ == typeid( dataType ).name();
+#endif
 		}
 		
 		/**
@@ -208,7 +230,11 @@ namespace wheels
 		void set( const dataType& data ){
 			std::lock_guard< std::mutex > lock( m_mutex__ );
 #if VARIANT_USE_TYPE_CHECK
-			assert( m_typeinfo__ == typeid( dataType ).name() );
+#if defined( __GNUC__ )
+            assert( m_typeinfo__ == abi::__cxa_demangle( typeid( dataType ).name(), 0, 0, 0) );
+#elif defined( _MSC_VER )
+            assert( m_typeinfo__ ==  typeid( dataType ).name() );
+#endif
 #endif
 			private__::variant__<dataType>  * p = static_cast< private__::variant__<dataType>* >( p_data__ );
 			if( p ){
