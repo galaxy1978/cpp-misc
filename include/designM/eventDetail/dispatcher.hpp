@@ -10,12 +10,17 @@
 #include <memory>
 #include <iostream>
 #include <thread>
+#include <condition_variable>
+#include <queue>
+#include <chrono>
 
+#include <mutex>
 #if CMD_USE_SINGLETON
-#    include "designM/singleton.hpp
+#    include "designM/singleton.hpp"
 #endif
 
 #include "designM/strategy.hpp"
+#include "container/variant.hpp"
 #include "event.hpp"
 namespace wheels
 {
@@ -24,35 +29,32 @@ namespace wheels
 		template< typename cmdType >
 		class dispatcher
 #if CMD_USE_SINGLETON
-			: singleton< dispatcher >
+            : public singleton< dispatcher<cmdType> >
 #endif
 		{
 		public:
-			using evt_func_type = void(const wheels::variant& );
-			using evt_func_type_p = evt_func_type_p *;
-			
 			using clock = std::chrono::high_resolution_clock;
 			using timepoint = std::chrono::time_point< clock >;
 			
-			using eventQueue = std::queue< wheels::variant >;
+			using eventQueue = std::queue< variant >;
 
-			using strategy = wheels::dm::strategy< cmdType , evt_func_type >;
+			using strategy = wheels::dm::strategy< cmdType , std::function< void (const variant& ) > >;
 		protected:
 			// 消息队列
-			std::unique_ptr< eventQueue >    __pt_store;
+			eventQueue                   m_store__;
 			// 策略模式实现一个函数映射表
-			strategy                     __m_func_map;
+			strategy                     m_func_map__;
 			// 数据互斥
-			std::mutex                   __m_mutex;
+			std::mutex                   m_mutex__;
 			// 线程控制互斥对象
-			std::mutex                   __m_inform_mutex;
+			std::mutex                   m_inform_mutex__;
 			// 条件变量
-			std::conditional_variable    __m_notify;
+			std::condition_variable      m_notify__;
 		public:
 			/**
 			 * @brief ctor
 			 */
-			dispatcher(): __pt_store( new eventQueue ){}
+			dispatcher(): m_store__(){}
 			
 			virtual ~dispatcher(){ 	clear(); }
 			/**
@@ -64,60 +66,58 @@ namespace wheels
 			 *    再开始执行。也可以后续调用update函数执行通知操作
 			 */
 			template< typename dataType >
-			void send( const cmdType& cmd , const dataType& data , bool notify = true ){
+			void send( const cmdType& cmd , dataType&& data , bool notify = true ){
 				eventData< cmdType >  evt_data( cmd , data );
 				wheels::variant param = wheels::variant::make( evt_data );
 				{
-					std::lock_guard< std::mutex > locker;
-					__pt_store->push( param );
+					std::lock_guard< std::mutex > locker(m_mutex__);
+					m_store__.push( param );
 				}
 				if( notify ){
-					__m_notify.notify_all();
+					m_notify__.notify_one();
+				}
+			}
+			
+			template< typename dataType >
+			void emit( const cmdType& cmd , dataType&& data , bool notify = true ){
+				eventData< cmdType >  evt_data( cmd , data );
+				wheels::variant param = wheels::variant::make( evt_data );
+				{
+					std::lock_guard< std::mutex > locker(m_mutex__);
+					m_store__.push( param );
+				}
+				if( notify ){
+					m_notify__.notify_one();
 				}
 			}
 
-			void update(){  __m_notify.notify_all(); }
+			void update(){  m_notify__.notify_one(); }
 			/**
 			 * @brief 清理队列，函数映射表
 			 */
 			void clear(){
-				std::lock_guard< std::mutex > lok( __m_mutex );
-				__m_func_map.clear();
-				__pt_store.erase( __pt_store->begin() , __pt_store->end() )h;
+				std::lock_guard< std::mutex > lok( m_mutex__ );
+				//m_func_map__.clear();
+				while( !m_store__.empty() ){
+					m_store__.pop();
+				}
 				// 清理掉所有数据后通知dispatch，结束dispath的等待操作
-				__m_notify.notify_all();
+				m_notify__.notify_all();
 			}
+
 			/**
-			 * @brief 连接命令和执行部分
-			 * @param func[ I ] 函数对象
-			 * @return 返回操作结果
-			 */
-			bool connect( const cmdType& cmd , std::function< evt_func_type> func ){
-			        std::lock_guard< std::mutex > lok( __m_mutex );
-				__m_func_map.add( cmd , func );
-				return true;
-			}
-			/**
-			 * @brief 连接命令和函数指针指向的处理函数
-			 * @param func[ I ]， 函数指针
-			 */
-			bool connect( const cmdType& cmd , evt_func_type_p func ){
-				std::lock_guard< std::mutex > lok( __m_mutex );
-				__m_func_map.add( cmd , std::bind( func , std::placeholders::_1 ) );
-				return true;
-			}
-			/**
-                         * @brief 命令绑定，这个函数用来绑定类成员函数
+			 * @brief 命令绑定，这个函数用来绑定类成员函数
 			 * @tparam classType 类名称
 			 * @tparam funcType，函数名称
 			 * @param cmd 命令
 			 * @param func 函数指针
 			 * @param 类对象指针
                          */
-			template<typename classType , typename funcType >
-			bool connect( const cmdType& cmd , funcType classType::* func , classType * obj ){
-				std::lock_guard< std::mutex > lok( __m_mutex );
-				__m_func_map.add( cmd , std::bind( func , obj ) );
+			template<typename Func_t >
+			bool connect( const cmdType& cmd , Func_t&& func ){
+				
+				std::lock_guard< std::mutex > lok( m_mutex__ );
+				m_func_map__.add( cmd , std::forward<Func_t>( func ) );
 				return true;
 			}
 			/**
@@ -126,24 +126,23 @@ namespace wheels
 			 * @note 通过超时时间降低系统负载
 			 */
 			void dispatch( long ovtime ){
-				if( __pt_store->size() > 0 ){
-					eventQueue<cmdType> item;
-				        {
-						std::lock_guard< std::mutex > lock;
-						item = __pt_store->front();
-						__pt_store->pop();
+				if( m_store__.size() > 0 ){
+					variant item;
+				    {
+						std::lock_guard< std::mutex > lock(m_mutex__);
+						item = m_store__.front();
+						m_store__.pop();
 					}
-					auto evt_data = item.get< eventData >();
-					__m_func_map.call( evt_data.__m_id , evt_data.__m_data );
+					auto evt_data = item.get< eventData<cmdType> >();
+                    m_func_map__.call( evt_data.m_id__ , evt_data.m_data__ );
 				}else{  // 如果消息队列中没有数据，则阻塞线程等待新的消息
 					// 这里要注意如果在销毁的时候或者清理数据内容的时候需要防止
 					// dispatch无法退出的情况
-					std::unique_lock<std::mutex> lok( __m_inform_mutex );
-					timepoint tp( std::chrono::milliseconds( ovtime ) );
-					__m_notify.wait_until( lok , tp );
+					std::unique_lock<std::mutex> lok( m_inform_mutex__ );
+					timepoint tp{ std::chrono::milliseconds( ovtime ) };
+					m_notify__.wait_until( lok , tp );
 				}
 			}
 		};
-
 	}
 }
