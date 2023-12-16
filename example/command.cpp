@@ -1,6 +1,6 @@
 #include <iostream>
 #include <thread>
-#include <conditional_variable>
+#include <condition_variable>
 #include <mutex>
 
 #include "designM/command.hpp"
@@ -22,7 +22,7 @@ using evtLoop_t = mainLoop< emEVT >;
 using evtDispt_t = dispatcher< emEVT >;
 
 std::mutex    gMutex;
-std::conditional_variable  cv;
+std::condition_variable  cv;
 
 int main()
 {
@@ -39,22 +39,25 @@ int main()
 	
 	p_dispt->connect( emEVT::EVT_A , []( const variant& data ){ 
 		int d = data.get< int >();
-		std::cout << d << std::endl;
+		std::cout << "EVT_A data: " << d << std::endl;
 	});
 	
-	p_dispt->connect( emEVT::EVT_A , []( const variant& data ){ 
+	p_dispt->connect( emEVT::EVT_B , []( const variant& data ){ 
 		std::string d = data.get< std::string >();
-		std::cout << d << std::endl;
+		std::cout << "EVT_B data: " << d << std::endl;
 	});
 	
-	p_dispt->connect( emEVT::EVT_A , []( const variant& data ){ 
-		float d = data.get< float >();
-		std::cout << d << std::endl;
+	p_dispt->connect( emEVT::EVT_C , []( const variant& data ){ 
+		double d = data.get< double >();
+		std::cout << "EVT_C data: " <<  d << std::endl;
 		
 		cv.notify_all();
 	});
 	
-	p_loop->exec();
+	std::thread thd([ = ]{
+		p_loop->exec();
+	});
+	thd.detach();
 	
 	p_dispt->emit( emEVT::EVT_A , 11 );
 	p_dispt->emit( emEVT::EVT_B , std::string( "abcdef" ) );
