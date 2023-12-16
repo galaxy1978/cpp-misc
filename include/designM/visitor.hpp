@@ -26,8 +26,9 @@ public:
 	 * @param func,方法函数对象
 	 * @return 如果成功添加方法，返回true，否则返回false
 	*/
-	bool addMethod( const std::string& name , func_t func ){
-		auto rst = m_funcs__.insert( std::make_pair( name , func ) );
+	template < typename Func_t >
+    bool addMethod( const std::string& name , Func_t&& func ){
+		auto rst = m_funcs__.insert( std::make_pair( name , std::move( func ) ) );
 		return rst.second;
 	}
 	/**
