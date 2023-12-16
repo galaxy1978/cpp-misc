@@ -28,7 +28,7 @@ public:
 	*/
 	template < typename Func_t >
     bool addMethod( const std::string& name , Func_t&& func ){
-		auto rst = m_funcs__.insert( std::make_pair( name , std::move( func ) ) );
+		auto rst = m_funcs__.insert( std::make_pair( name , std::forward<Func_t>( func ) ) );
 		return rst.second;
 	}
 	/**
