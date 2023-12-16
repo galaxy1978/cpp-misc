@@ -40,7 +40,7 @@ namespace dm {
 // 对消息结构的复杂性，所以使用std::tuple的方式。
 #if MEDIATOR_USE_TUPLE
 	template< typename MEDIATOR , typename ...PARAMS >
-	struct colleagueItfc : public private__::colleagueBase , public std::enable_shared_from_this<colleagueItfc<MEDIATOR , PARAMS...> >
+	struct colleagueItfc : public private__::colleagueBase
 	{
 	public:
 		using mediator_t = typename std::remove_pointer< typename std::decay<MEDIATOR>::type >::type;
