@@ -8,6 +8,8 @@
 #include <string>
 #include <regex>
 #include <sstream>
+#include <chrono>
+#include <thread>
 
 #if defined( __LINUX__ )
 #    include <sys/time.h>
@@ -25,14 +27,16 @@
 #    include <iphlpapi.h> /* From the Microsoft Platform SDK */
 #    include <iprtrmib.h>
 #    include <windows.h>
+#    include <locale>
+#    include <codecvt>
 #endif
 #if USE_ICONV == 1
 #    include <iconv.h>
 #endif
-
+#include "ary_str.hpp"
 #include "misc.hpp"
+using namespace wheels;
 // 全局LOG数据格式化缓冲区
-
 #if defined(__cplusplus)
 extern "C"{
 #endif
@@ -276,7 +280,7 @@ void ps( const std::string& pattern , std::function< void ( std::vector<std::str
 std::string localIP( const std::string& eth )
 {
 	std::string  ret;
-	register int fd;
+    int fd;
 	struct ifreq ifr;
 
 	if( ( fd=socket(AF_INET, SOCK_DGRAM, 0)) > 0){
@@ -296,9 +300,12 @@ std::string localIP( const std::string& eth )
 #if defined __DEBUG__
 void dump( const char* data , size_t s )
 {
-	for( size_t i = 0; i < s; i ++ ){
+	for( size_t i = 0 , j = 1; i < s; i ++ , j ++ ){
+		if( j == 16 ){
+			printf("\n");
+			j = 1;
+		}
 		printf(" 0X%02X" , (uint8_t)data[ i ]);
-		if( i % 16 == 0 && i != 0) puts("");
 	}
 	printf( "\n" );
 }
@@ -392,7 +399,7 @@ std::string nowStr()
 	auto tp1=std::chrono::time_point<std::chrono::system_clock,std::chrono::milliseconds>(mTime);
 	auto tt = std::chrono::system_clock::to_time_t(tp1);
 	std::tm* now = std::gmtime(&tt);
-	sprintf( data , "%4d-%02d-%02d %02d:%02d:%02d.%03lld",now->tm_year+1900,now->tm_mon+1,now->tm_mday,now->tm_hour,now->tm_min,now->tm_sec, milli%1000);
+	sprintf( data , "%4d-%02d-%02d %02d:%02d:%02d.%03ld",now->tm_year+1900,now->tm_mon+1,now->tm_mday,now->tm_hour,now->tm_min,now->tm_sec, milli%1000);
 #else
 	struct timeval tv;
 	gettimeofday(&tv, NULL);
@@ -551,7 +558,7 @@ size_t getFileSize( const std::string& path )
 	struct stat   statbuf;
 
 	if( stat( path.c_str() , &statbuf ) == 0 ){
-                ret = statbuf.st_size;
+        ret = statbuf.st_size;
 	}
 	return ret;
 }
@@ -571,8 +578,9 @@ std::wstring Str2Wstr(std::string str)
 
 std::string ExeCmd(std::string pszCmd)
 {
-#if defined( _UNICODE ) || defined( UNICODE )	
-	wchar_t * pszCmd_w = (wchar_t *)Str2Wstr(pszCmd).c_str();
+#if defined( _UNICODE ) || defined( UNICODE )
+    std::wstring w_str = Str2Wstr(pszCmd);
+    const wchar_t * pszCmd_w = w_str.data();
 #else
 	char * pszCmd_w = ( char*)pszCmd.c_str();
 #endif
@@ -592,8 +600,8 @@ std::string ExeCmd(std::string pszCmd)
 	si.hStdError = hWrite;
 	si.hStdOutput = hWrite; //管道的输入端口连接命令行的输出；
 	// 启动命令行
-	PROCESS_INFORMATION pi;// Pointer to PROCESS_INFORMATION structure;
-	if (!CreateProcess(NULL, pszCmd_w , NULL,NULL,TRUE, 0 ,NULL,NULL,&si,&pi)){
+    PROCESS_INFORMATION pi;// Pointer to PROCESS_INFORMATION structure;
+    if (!CreateProcess(NULL, (LPWSTR)pszCmd_w , NULL,NULL,TRUE, 0 ,NULL,NULL,&si,&pi)){
 		return ("Cannot create process");
 	}
 	CloseHandle(hWrite);//关闭管道的输入端口；
@@ -612,11 +620,10 @@ std::string ExeCmd(std::string pszCmd)
 
 bool execCmd(std::string pszCmd , std::function< void ( const std::string& )> fun)
 {
-#if defined( _UNICODE ) || defined( UNICODE )	
-	wchar_t * pszCmd_w = (wchar_t *)Str2Wstr(pszCmd).c_str();
-#else
-	char * pszCmd_w = ( char*)pszCmd.c_str();
-#endif
+    std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+    std::wstring wstr = converter.from_bytes(pszCmd);
+
+    const wchar_t * pszCmd_w = wstr.c_str();
 
 	// 创建匿名管道,write->read;
 	SECURITY_ATTRIBUTES sa = { sizeof(SECURITY_ATTRIBUTES), NULL, TRUE };
@@ -636,7 +643,8 @@ bool execCmd(std::string pszCmd , std::function< void ( const std::string& )> fu
 	si.hStdOutput = hWrite;			//管道的输入端口连接命令行的输出；
 	// 启动命令行
 	PROCESS_INFORMATION pi;// Pointer to PROCESS_INFORMATION structure;
-	if(!CreateProcess(NULL, pszCmd_w,NULL,NULL,TRUE,0,NULL,NULL,&si,&pi)){
+    if(!CreateProcess(NULL, (LPWSTR)pszCmd_w,NULL,NULL,TRUE,0,NULL,NULL,&si,&pi)){
+        ERROR_MSG( "启动程序失败" );
 		return false;
 	}
 	CloseHandle(hWrite);//关闭管道的输入端口；
