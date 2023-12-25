@@ -75,6 +75,7 @@ iTimer :: emErrCode
 linuxTimer :: Start( long ms , bool oneShot )
 {
 	emErrCode ret = OK;
+	if( __m_is_run == true ) return ret;
 	if( ms > 0 ){
 		__m_tick = ms;
 	}
@@ -90,19 +91,27 @@ linuxTimer :: Start( long ms , bool oneShot )
 	}
 	__m_is_one_shot = oneShot;
 	if( ret == OK ){
-		
+		int param = 0;
 		__m_new.it_value.tv_sec = __m_tick.load() / 1000;
-		__m_new.it_value.tv_nsec = ( __m_tick.load() % 1000 ) * 1000;
-		
+		__m_new.it_value.tv_nsec =( __m_tick.load() % 1000 ) * 1000;
+
 		if( oneShot == false ){ // 如果是连续触发，则配置冷却时间为非0值
+
 			__m_new.it_interval.tv_sec = __m_new.it_value.tv_sec;
 			__m_new.it_interval.tv_nsec = __m_new.it_value.tv_nsec;
-		}else{
+		}else{			
+			struct timespec now;
 			__m_new.it_interval.tv_sec = 0;
 			__m_new.it_interval.tv_nsec = 0;
+			
+			clock_gettime( CLOCK_REALTIME , &now );
+			
+			__m_new.it_value.tv_sec = now.tv_sec + __m_new.it_value.tv_sec;
+			__m_new.it_value.tv_nsec = now.tv_nsec + __m_new.it_value.tv_nsec;
+			param = TIMER_ABSTIME ;
 		}
 		
-		int rst = timer_settime( __m_id , 0 , &__m_new , nullptr );
+		int rst = timer_settime( __m_id , param , &__m_new , nullptr );
 		if( rst < 0 ){
 			ret = ERR_START_TIMER;
 		}else{
@@ -156,6 +165,7 @@ linuxTimer :: __init_timer()
 	__m_evt.sigev_value.sival_ptr = this;
 	__m_evt.sigev_notify_function = linux_on_timer;
 	timer_t id;
+
 	int rst = timer_create( CLOCK_REALTIME , &__m_evt , &id );
 	if( rst != 0 ){
 		ret = ERR_CREATE_TIMER;
