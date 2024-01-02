@@ -17,17 +17,23 @@ namespace private__
 
 #define DECLARE_RESPLINK_ITFC( name )    \
 	struct name :public private__::respItfc__ {
-		
+
+// 如果不使用回调函数调用的时候，name必须声明为operation
 #define RESPLINK_ITFC_MTD( name , ... )   virtual bool name(  __VA_ARGS__ ) = 0;
 
 #define END_DECLARE_RESPLINK_ITFC()   };
 	
-	
+#define DECLARE_RESPLINK_ITFC_DEFAULT( name )	\
+DECLARE_RESPLINK_ITFC( name ) \
+RESPLINK_ITFC_MTD( operation ) \
+END_DECLARE_RESPLINK_ITFC()
+
+
 namespace wheels
 {
 namespace dm
 {
-    template< typename ITFC_TYPE >
+    template< typename ITFC_TYPE >x
 	class rspsLink
 	{
 	public:
@@ -41,7 +47,11 @@ namespace dm
 	public:
         rspsLink(){}
 		virtual ~rspsLink(){}
-		
+		/**
+		 * @brief 以责任链模式执行的时候接口函数返回false则停止继续传递
+		 * @tparam Params
+		 * @param params
+		*/
 		template< typename ...Params >
         void request( Params&&... params ){
             for( auto item : m_link__ ){
