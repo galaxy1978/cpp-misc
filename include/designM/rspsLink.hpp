@@ -16,7 +16,8 @@ namespace private__
 }
 
 #define DECLARE_RESPLINK_ITFC( name )    \
-	struct name :public private__::respItfc__ {
+	struct name :public private__::respItfc__ {   \
+    virtual ~name(){}
 
 // 如果不使用回调函数调用的时候，name必须声明为operation
 #define RESPLINK_ITFC_MTD( name , ... )   virtual bool name(  __VA_ARGS__ ) = 0;
