@@ -18,7 +18,7 @@ namespace private__
 #define DECLARE_RESPLINK_ITFC( name )    \
 	struct name :public private__::respItfc__ {
 		
-#define RESPLINK_ITFC_MTD( ... )   virtual bool operation(  __VA_ARGS__ ) = 0;
+#define RESPLINK_ITFC_MTD( name , ... )   virtual bool name(  __VA_ARGS__ ) = 0;
 
 #define END_DECLARE_RESPLINK_ITFC()   };
 	
