@@ -23,9 +23,9 @@ namespace private__
 
 #define END_DECLARE_RESPLINK_ITFC()   };
 	
-#define DECLARE_RESPLINK_ITFC_DEFAULT( name )	\
-DECLARE_RESPLINK_ITFC( name ) \
-RESPLINK_ITFC_MTD( operation ) \
+#define DECLARE_RESPLINK_ITFC_DEFAULT( name , ...)		\
+DECLARE_RESPLINK_ITFC( name ) 							\
+RESPLINK_ITFC_MTD( operation , __VA_ARGS__ ) 			\
 END_DECLARE_RESPLINK_ITFC()
 
 
