@@ -33,7 +33,7 @@ namespace wheels
 {
 namespace dm
 {
-    template< typename ITFC_TYPE >x
+    template< typename ITFC_TYPE >
 	class rspsLink
 	{
 	public:
