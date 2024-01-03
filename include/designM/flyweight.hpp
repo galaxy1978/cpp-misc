@@ -157,6 +157,13 @@ public:
     void erase( iterator it ){ m_itfcs__.erase( it ); }
     void erase( iterator b , iterator e ){ m_itfcs__.erase( b , e ); }
 
+     void erase( const idType& name ){
+        auto it = m_itfcs__.find( name );
+        if( it != m_itfcs__.end() ){
+            m_itfcs__.erase( it );
+        }
+    }
+    
     iterator begin(){ return m_itfcs__.begin(); }
     iterator end(){ return m_itfcs__.end(); }
 };
