@@ -2,9 +2,6 @@
 
 #include "details/linuxTimer.hpp"
 
-/**
- * @brief 
- */
 void linux_on_timer( sigval info )
 {
 	linuxTimer * obj = (linuxTimer *)info.sival_ptr;
@@ -165,7 +162,8 @@ linuxTimer :: __init_timer()
 	__m_evt.sigev_value.sival_ptr = this;
 	__m_evt.sigev_notify_function = linux_on_timer;
 	timer_t id;
-
+	// CLOCK_MONOTONIC
+	// CLOCK_REALTIME
 	int rst = timer_create( CLOCK_REALTIME , &__m_evt , &id );
 	if( rst != 0 ){
 		ret = ERR_CREATE_TIMER;
