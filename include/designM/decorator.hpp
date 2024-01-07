@@ -103,7 +103,7 @@ namespace wheels
 			 */
 			void remove( size_t idx ){
                 if( idx < m_dcrtes__.size() ){
-                    m_dcrtes__.erase( idx );
+                    m_dcrtes__.erase( m_dcrtes__.begin() + idx );
 				}
 			}
 			/**
@@ -121,7 +121,7 @@ namespace wheels
 			 *          
 			 * @note 这个接口会使用openomp的方式并行执行，如果在业务程序中存在互斥数据应该自行处理好
 			 */
-            void decratMe( std::function< void (dcrte_t & ) > cb ){
+            void decratMeCallback( std::function< void (dcrte_t & ) > cb ){
                 size_t count = m_dcrtes__.size();
 			
 				for( size_t i = 0; i < count; i ++ ){
@@ -129,11 +129,11 @@ namespace wheels
 				}
 			}
 
-            void decratMe( std::function< void (itfc_t * itfc ) > cb ){
+            void decratMeCallback( std::function< void (itfc_t * itfc ) > cb ){
                 size_t count = m_dcrtes__.size();
 			
 				for( size_t i = 0; i < count; i ++ ){
-                    cb( m_dcrtes__[ i ] );
+                    cb( m_dcrtes__[ i ].get() );
 				}
 			}
 		
