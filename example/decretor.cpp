@@ -1,8 +1,14 @@
-#include "designM/decrator.hpp"
+#include <iostream>
+
+#include "designM/decorator.hpp"
 using namespace wheels;
 using namespace dm;
 
-class ExampleClass
+BEGIN_DECLARE_DECORTEE_ITFC( ExampleClass__ )								
+	DECORTEE_METHOD( void , print )    							
+END_DECLARE_DECORTEE_ITFC()
+
+class ExampleClass : public ExampleClass__
 {
 public:
     std::string name;
@@ -29,7 +35,7 @@ int main()
     dec.decrat(obj2);
 
     // 使用lambda表达式打印所有装饰的ExampleClass对象
-    dec.decratMe([](ExampleClass* obj) {
+    dec.decratMeCallback([](decorator<ExampleClass>::dcrte_t& obj) {
         obj->print();
     });
 
@@ -39,7 +45,7 @@ int main()
     std::cout << "After remove:" << std::endl;
 
     // 再次使用lambda表达式打印所有装饰的ExampleClass对象
-    dec.decratMe([](ExampleClass* obj) {
+    dec.decratMeCallback([](decorator<ExampleClass>::dcrte_t& obj) {
         obj->print();
     });
 
