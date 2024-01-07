@@ -20,15 +20,19 @@ namespace decorator_private__
 	};
 }
 
-#define BEGIN_DECLARE_DECORTEE_ITFC( name )							\
-	struct name: public  decorator_private__::stDecorateeItfc__{	\
+#define BEGIN_DECLARE_DECORTEE_ITFC( name )								\
+	struct name: public  decorator_private__::stDecorateeItfc__{		\
 		virtual ~name(){}
 		
-#define DECORTEE_METHOD( RET , NAME , __VA_ARGS__ )    				\
-	virtual RET NAME( __VA_ARGS__ ) = 0
+#define DECORTEE_METHOD( RET , NAME , ... )    							\
+	virtual RET NAME( __VA_ARGS__ ) = 0;
 	
-#define END_DECLARE_DECORTEE_ITFC
+#define END_DECLARE_DECORTEE_ITFC()	};
 
+#define DECLARE_DECORTEE_DEFAULT( name , ... )    						\
+	BEGIN_DECLARE_DECORTEE_ITFC( name )									\
+		DECORTEE_METHOD( void , operation , __VA_ARGS__ )				\
+	END_DECLARE_DECORTEE_ITFC()
 
 namespace wheels
 {
@@ -39,7 +43,7 @@ namespace wheels
 		{		
 		public:
             using itfc_t = typename std::remove_pointer< typename std::decay<itfcType>::type >::type;
-			static_assert( std::is_base_of<decorator_private__::stDecorateeItfc__>::value , "" );
+			static_assert( std::is_base_of<decorator_private__::stDecorateeItfc__ , itfc_t>::value , "" );
 			/**
 			 * @brief 装饰品包装，类似与化妆品包装盒
 			 */
@@ -49,10 +53,10 @@ namespace wheels
                 itfc_t  * p_imp__;     // 实际的装饰品，类似实际的化妆品
 			public:
                 decoratee():p_imp__( nullptr ){}
-                decoratee( itfcType * imp ):p_imp__( imp ){}
-                decoratee( itfcType&& b ): p_imp__( b.p_imp__ ){}
+                decoratee( itfc_t * imp ):p_imp__( imp ){}
+                decoratee( decoratee&& b ): p_imp__( b.p_imp__ ){}
 
-				decoratee& operator=( itfcType&& b ){
+				decoratee& operator=( decoratee&& b ){
                     p_imp__ = b.p_imp__;
 					return *this;
 				}
@@ -90,7 +94,7 @@ namespace wheels
 			 * @return
 			 */
 			size_t decrat( itfcType * dcrtee ) {
-                m_dcrtes__.push_back( decrat_t( dcrtee ) );
+                m_dcrtes__.push_back( dcrte_t( dcrtee ) );
                 return m_dcrtes__.size() - 1;
 			}
 			
@@ -100,6 +104,15 @@ namespace wheels
 			void remove( size_t idx ){
                 if( idx < m_dcrtes__.size() ){
                     m_dcrtes__.erase( idx );
+				}
+			}
+			/**
+			* @brief 使用默认接口方式试下配合使用的装饰执行函数
+			*/
+			template< typename ...Params >
+			void decratMe( Params&& ...args ){
+				for( size_t i = 0; i < m_dcrtes__.size(); ++i ){
+                  m_dcrtes__[i]->operation( std::forward<Params>( args )... );
 				}
 			}
 			/**
