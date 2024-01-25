@@ -13,14 +13,36 @@
 #include <stack>
 #include <memory>
 
+namespace composite_private__
+{
+	struct stCompositeItfcBase__{};
+}
+
+#define DECLARE_COMPOSITE_ITFC( name )		\
+struct name : public composite_private__::stCompositeItfcBase__ { \
+	virtual ~name(){}
+	
+#define COMPOSITE_METHOD( name , ... )     virtual bool name( __VA_ARGS__ ) = 0;
+
+#define END_COMPOSITE_ITFC()      };
+
+#define DECLARE_COMPOSITE_ITFC_DEFAULT( itfcName , ... )		\
+	DECLARE_COMPOSITE_ITFC( itfcName )							\
+	COMPOSITE_METHOD( operation , __VA_ARGS__ )					\
+	END_COMPOSITE_ITFC()
+	
 namespace wheels
 {
 namespace dm{
-	template< typename ITFC_TYPE >
+	
+	template< typename DATA_TYPE >
 	class composite
 	{
 	public:
-		using type_t = typename std::remove_pointer<typename std::decay< ITFC_TYPE >::type >::type;
+		using type_t = typename std::remove_pointer<typename std::decay< DATA_TYPE >::type >::type;
+		
+		static_assert( std::is_base_of<composite_private__::stCompositeItfcBase__ , type_t>::value , "" );
+		
         using composite_t = composite< type_t >;
 		using children_t = std::vector< std::shared_ptr< composite< type_t > > >;
         using iterator = typename children_t::iterator;
@@ -65,7 +87,7 @@ namespace dm{
                 auto it = stack.top();
                 stack.pop();
 
-                if( !func(it->get()) ) break;
+                if( !it->get()) ) break;
 
                 if (!it->get()->isLeaf()) {
                     stack.push(it->begin());
@@ -73,6 +95,37 @@ namespace dm{
                 }
             }
         }
+		
+		/**
+         * @brief 先序遍历操作
+         * @param func[ I ]， 回调函数，返回true继续遍历，否则结束遍历操作
+         */
+		template< typename ...PARAMS >
+        void preOrderTraversalDefault( PARAMS&& ...params ) {
+            if( isLeaf() ) return;
+            std::stack<iterator> stack;
+            stack.push(m_children__.begin());
+            while (!stack.empty()) {
+                auto it = stack.top();
+                stack.pop();
+
+                if( !it->get()->operation( std::forward<PARAMS>(params)... ) ) break;
+
+                if (!it->get()->isLeaf()) {
+                    stack.push(it->begin());
+                    stack.push(std::next(it->begin()));
+                }
+            }
+        }
+		
+		template< typename ...PARAMS >
+		void for_eachDefault( PARAMS&&... params ){
+			for( auto item : m_children__ ){
+				bool rst = it->get()->operation( std::forward<PARAMS>(params)... ) );
+				if( !rst ) break;
+			}
+		}
+		
         /**
          * @brief 本层遍历
          * @param fun
