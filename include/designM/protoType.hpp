@@ -45,4 +45,30 @@ realType * clone( const realType& old )
 		
 	return ret;
 }
+
+template< typename T ,
+		  typename midType = typename std::decay< T >::type ,
+		  typename realType = typename std::remove_pointer< midType >::type >
+std::shared_ptr<realType> clone( std::shared_ptr< realType> old )
+{
+	std::shared_ptr< realType >  ret;
+	
+	if( !old) return {};
+    std::weak_ptr<realType > wkptr( old );
+    if(wkptr.expired()) return {};
+    ret = wkptr.lock(); 
+	return ret;
+}
+
+template< typename T ,
+		  typename midType = typename std::decay< T >::type ,
+		  typename midType2 = typename std::remove_pointer< midType >::type,
+		  typename realType = typename std::enable_if< 
+				std::is_copy_constructible<midType2>::value && 
+                std::is_class< midType2 >::value , midType2 >::type >
+std::shared_ptr< realType > cloneShared( const realType& old )
+{
+    auto ret = std::make_shared<realType >(old);
+    return ret;
+}
 }}
