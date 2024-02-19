@@ -31,7 +31,7 @@ tcpLinux :: tcpLinux( const std::string& url , uint16_t port ):
 	
     // 创建tcp套接字
 	m_tcp_fd__ = socket( AF_INET , SOCK_STREAM , 0 );
-	
+	fcntl( m_tcp_fd__.load() , F_SETFL , O_NONBLOCK );
 	// 关联套接字
 	struct epoll_event ev;
 	ev.events = EPOLLIN;
