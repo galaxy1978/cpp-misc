@@ -5,10 +5,11 @@
  * @date 2023-9-11
  *
  * 暂时仅仅实现了epoll模式的接口
+ * 2024-02-19  更新了连接错误的处理部分
  */
 
 #pragma once
-// sslsocket使用了模板来实现，实际上使用了桥接模式
+
 #include <memory>
 #include <atomic>
 #include <mutex>
@@ -23,26 +24,24 @@
 
 #include "details/socketbase.hpp"
 
-namespace private__{ // 这里对private__定义了
-	// 模板参数是tcpLinux或者tcpWindows或者可以定义其他的
+namespace private__{
 	template< typename impType >
-	class sslSocket__ : public itfcSocket // 也是从itfcSocket继承，需要实现其中的所有虚函数
+	class sslSocket__ : public itfcSocket
 	{
 	public:
 		using native_socket = itfcSocket::native_socket;
 	private:
-		std::shared_ptr< impType >     pt_impl__;    // 后端TCP模块对象指针，针对impType，就是实际系统接口的实现对象指针
+		std::shared_ptr< impType >     pt_impl__;    // 后端TCP模块对象指针
 		SSL_CTX                      * p_ctx__;      // SSL CTX
 		SSL                          * p_ssl__;      // ssl连接
 		std::atomic< native_socket >   m_socket__;   // 后端tcp套接字
 		std::string                    m_addr__;     // 服务器地址
 		std::atomic<uint16_t>          m_port__;     // 服务器端口号
-		// 实际数据对外通知的回调函数对象
 		std::function< void (const uint8_t * data , size_t len) >  m_cb__;
 		
 	private:
 		/**
-		 * @brief 创建SSL连接对象。是openssl SSL的准备工作
+		 * @brief 创建SSL连接对象
 		 */
 		SSL_CTX* create_ssl_ctx__( const std::string& ca,  const std::string& cert,  const std::string& key ){
 			SSL_CTX* ctx = NULL;
@@ -62,7 +61,7 @@ namespace private__{ // 这里对private__定义了
 				return nullptr;
 			}
 
-			// 加载客户端证书和私钥，这个实现需要验证服务器，服务也应该要求验证客户端。进行双向验证
+			// 加载客户端证书和私钥
 			if (SSL_CTX_use_certificate_file(ctx, cert.c_str(), SSL_FILETYPE_PEM) != 1) {
 				ERROR_MSG( "Failed to load client certificate!" );
 				SSL_CTX_free(ctx);
@@ -153,24 +152,20 @@ namespace private__{ // 这里对private__定义了
 
 			SSL_library_init();
 			SSL_load_error_strings();
-			// 初始化后端具体TCP的实现
+				
 			pt_impl__ = std::make_shared< impType >( url , port );
-			// 将TCP socket读出保存在类中
 			native_socket sock = pt_impl__->getHandle();
 			m_socket__ = sock;
-			// 准备ssl连接
 			p_ctx__ = create_ssl_ctx__( ca , cert ,key);
 
 			
 		}
 
 		virtual ~sslSocket__(){
-			// 这里是析构，先处理SSL
 			if( p_ssl__ ){
 				SSL_shutdown( p_ssl__);
 				SSL_free( p_ssl__ );
 			}
-			// 关闭TCP
 			if( pt_impl__ ){
 				pt_impl__->close();
 			}
@@ -180,7 +175,7 @@ namespace private__{ // 这里对private__定义了
 			}
 		}
 		/**
-		 * @brief 连接服务器。实际连接操作
+		 * @brief 连接服务器
 		 * @return 成功操作返回true，否则返回false
 		 */
 		virtual bool connect() final{
@@ -190,19 +185,23 @@ namespace private__{ // 这里对private__定义了
 				p_ssl__ = SSL_new( p_ctx__ );
 				SSL_set_fd(p_ssl__, m_socket__.load() );
 				// 建立 SSL 连接
-				int rst = SSL_connect(p_ssl__);
-				if ( rst < 0 ) {
-					int err = SSL_get_error(p_ssl__, rst);
-					process_err__( err );
-					return false;
+			reconnect_1:
+				if (SSL_connect(p_ssl__) == -1) {
+					int ssl_err = SSL_get_error(p_ssl__, ret);
+					if (ssl_err == SSL_ERROR_WANT_READ || ssl_err == SSL_ERROR_WANT_WRITE) {
+						// 握手仍在进行中，需要再次调用非阻塞操作
+						goto reconnect_1;
+					} else {
+						process_err__( ssl_err );// 握手失败，处理错误
+						return false;
+					}
 				}
-				// 服务器证书验证。验证服务器，通过才可以继续
+			
+				// 服务器证书验证
 				if (SSL_get_verify_result(p_ssl__) != X509_V_OK) {
 					ERROR_MSG( "服务器证书验证失败" );
 					rst = false;
-				}else{ // 这里很重要，应在SSL握手成功后再配置读取数据的回调函数
-				// 否则因为epoll函数的异步特性可能导致SSL握手失败
-				// 同样的后端TCP，epoll事件也应在在连接成功再启动。
+				}else{
 					MSG( "服务器证书验证成功" , OK_MSG );
 					// 完成证书验证后将会掉函数调整到数据读取
 					pt_impl__->onRecv( [=]( native_socket socket ){
@@ -244,12 +243,18 @@ namespace private__{ // 这里对private__定义了
 				// 创建 SSL 对象，并绑定到 socket.
 				p_ssl__ = SSL_new( p_ctx__ );
 				SSL_set_fd(p_ssl__, m_socket__.load() );
-
+			reconnect_2:
 				if (SSL_connect(p_ssl__) == -1) {
-					ERROR_MSG( "SSL连接失败" );
-					return false;
+					int ssl_err = SSL_get_error(p_ssl__, ret);
+					if (ssl_err == SSL_ERROR_WANT_READ || ssl_err == SSL_ERROR_WANT_WRITE) {
+						// 握手仍在进行中，需要再次调用非阻塞操作
+						goto reconnect_2;
+					} else {
+						process_err__( ssl_err );// 握手失败，处理错误
+						return false;
+					}
 				}
-
+				
 				// 服务器证书验证
 				if (SSL_get_verify_result(p_ssl__) != X509_V_OK) {
 					ERROR_MSG( "服务器证书验证失败" );
@@ -274,7 +279,6 @@ namespace private__{ // 这里对private__定义了
 		 * @exception std::runtime_error
 		 */
 		virtual size_t send( const uint8_t * data , size_t len ) final{
-			// 这里就是为什么不在epoll中实现发送的原因，因为没有必要
 			int ret = SSL_write( p_ssl__ , data , len );
 			if( ret < 0 ){
 				throw std::runtime_error( "发送数据失败" );
@@ -292,7 +296,7 @@ namespace private__{ // 这里对private__定义了
 			pt_impl__->close();
 		}
 		/**
-		 * @brief 配置接收数据的回调函数。对外通知
+		 * @brief 配置接收数据的回调函数
 		 * @param fun[ I ]，回调函数对象, 函数原型为
 		 *    void callback( const uint8_t * data , size_t len );
 		 */
@@ -300,7 +304,7 @@ namespace private__{ // 这里对private__定义了
 			m_cb__ = fun;
 		};
 		/**
-		 * @brief 数据接收事件处理,读取数据内容。这里就不需要了，读取操作处理在上面
+		 * @brief 数据接收事件处理,读取数据内容。
 		 * @param fun[ I ]
 		 */
 		virtual void onRecv( std::function< void ( native_socket fd ) > fun ) final{
@@ -308,7 +312,7 @@ namespace private__{ // 这里对private__定义了
 		}
 
 		/**
-		 * @brief 启动异步通讯事件循环.必须在SSL握手后调用启动
+		 * @brief 启动异步通讯事件循环.
 		 * @param sw[ I ], true启动,false关闭
 		 * @note **** 这个函数应该在建立ssl连接之后调用。在SSL握手期间一定不能启动，否则容易握手失败
 		 */
@@ -354,7 +358,7 @@ namespace private__{ // 这里对private__定义了
 
 				X509_free(cert);
 			} else {
-                std::cerr << "Failed to get server certificate." << std::endl;
+                                std::cerr << "Failed to get server certificate." << std::endl;
 			}
 
 			this->close();
@@ -362,17 +366,11 @@ namespace private__{ // 这里对private__定义了
 	};
 
 }
-
-// 通过宏定义分别处理不同的实现，对外实际使用了统一的名字
 #if defined( WIN32 ) || defined( WINNT )
 #include "details/tcpwin.hpp"
-// 使用了tcpWin作为模板参数。对外名字为sslSocket
 using sslSocket = private__::sslSocket__< tcpWin >;
 #elif defined( __LINUX__ )
 #include "details/tcplinux.hpp"
-// 使用了tcpLinux作为模板参数，对外名字为sslSocket
-// private__ 是一个名字空间，表示具体实现进行了名字限制
 using sslSocket = private__::sslSocket__< tcpLinux >;
 #endif
 
-// 完，谢谢。
